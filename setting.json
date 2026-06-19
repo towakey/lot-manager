@@ -7,6 +7,7 @@
     "create_backup": true
   },
   "column_mapping": {
+    "customer": "顧客名",
     "model": "機種",
     "order_number": "注文番号",
     "lot_number": "LOT番号",

@@ -398,6 +398,13 @@
 <header id="app-header">
   <h1>ロット管理</h1>
   <div class="header-separator"></div>
+  <div class="model-selector" id="customer-selector-wrap" style="display:none;">
+    <label for="customer-select">顧客:</label>
+    <select id="customer-select" onchange="onCustomerChange()">
+      <option value="">-- 全て --</option>
+    </select>
+  </div>
+  <div class="header-separator" id="customer-separator" style="display:none;"></div>
   <div class="model-selector">
     <label for="model-select">機種:</label>
     <select id="model-select" onchange="onModelChange()">
@@ -436,6 +443,7 @@ var SAVE_URL = "save_data.py";
    状態管理
    ================================================================= */
 var currentUser = null;
+var currentCustomer = "";
 var currentModel = null;
 var allLots = [];
 var originalAssignments = {};
@@ -517,7 +525,7 @@ function doLogin() {
     document.getElementById("app-header").classList.add("show");
     document.getElementById("main").classList.add("show");
     document.getElementById("empty-state").classList.add("show");
-    loadModels();
+    loadCustomersAndModels();
   })
   .catch(function(err) {
     btn.disabled = false;
@@ -535,6 +543,7 @@ function doLogout() {
     if (!confirm("未保存の変更があります。ログアウトしてもよいですか？")) return;
   }
   currentUser = null;
+  currentCustomer = "";
   currentModel = null;
   allLots = [];
   originalAssignments = {};
@@ -545,17 +554,58 @@ function doLogout() {
   document.getElementById("main").classList.remove("show");
   document.getElementById("board").innerHTML = "";
   document.getElementById("empty-state").classList.remove("show");
+  document.getElementById("customer-select").innerHTML = '<option value="">-- 全て --</option>';
+  document.getElementById("customer-selector-wrap").style.display = "none";
+  document.getElementById("customer-separator").style.display = "none";
   document.getElementById("model-select").innerHTML = '<option value="">-- 選択してください --</option>';
   hideStatus();
   updateChangeUI();
 }
 
 /* =================================================================
-   機種一覧読み込み
+   顧客一覧読み込み → 機種一覧読み込み
    ================================================================= */
-function loadModels() {
-  showLoading("機種一覧を読み込み中...");
+function loadCustomersAndModels() {
+  showLoading("顧客一覧を読み込み中...");
   fetch(LOAD_URL + "?username=" + encodeURIComponent(currentUser.username))
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    hideLoading();
+    if (!data.success) {
+      showStatus(data.error, "error");
+      return;
+    }
+    if (data.customers && data.customers.length > 0) {
+      var csel = document.getElementById("customer-select");
+      csel.innerHTML = '<option value="">-- 全て --</option>';
+      data.customers.forEach(function(c) {
+        var opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        csel.appendChild(opt);
+      });
+      document.getElementById("customer-selector-wrap").style.display = "";
+      document.getElementById("customer-separator").style.display = "";
+    } else {
+      document.getElementById("customer-selector-wrap").style.display = "none";
+      document.getElementById("customer-separator").style.display = "none";
+    }
+    loadModels("");
+  })
+  .catch(function(err) {
+    hideLoading();
+    showStatus("通信エラー: " + err.message, "error");
+  });
+}
+
+function loadModels(customer) {
+  showLoading("機種一覧を読み込み中...");
+  var url = LOAD_URL + "?username=" + encodeURIComponent(currentUser.username)
+            + "&models=1";
+  if (customer) {
+    url += "&customer=" + encodeURIComponent(customer);
+  }
+  fetch(url)
   .then(function(res) { return res.json(); })
   .then(function(data) {
     hideLoading();
@@ -576,6 +626,27 @@ function loadModels() {
     hideLoading();
     showStatus("通信エラー: " + err.message, "error");
   });
+}
+
+/* =================================================================
+   顧客選択変更
+   ================================================================= */
+function onCustomerChange() {
+  var customer = document.getElementById("customer-select").value;
+  if (currentModel && getChanges().length > 0) {
+    if (!confirm("未保存の変更があります。顧客を切り替えると変更が失われます。よろしいですか？")) {
+      document.getElementById("customer-select").value = currentCustomer;
+      return;
+    }
+  }
+  currentCustomer = customer;
+  currentModel = null;
+  allLots = [];
+  originalAssignments = {};
+  document.getElementById("board").innerHTML = "";
+  document.getElementById("empty-state").classList.add("show");
+  updateChangeUI();
+  loadModels(customer);
 }
 
 /* =================================================================

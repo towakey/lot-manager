@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 load_data.py - データ読み込みCGI
-GET: ?username=admin           → 機種一覧を返す
-GET: ?username=admin&model=AAA001 → 指定機種のデータをグループ化して返す
+GET: ?username=admin                         → 顧客一覧を返す
+GET: ?username=admin&customer=田中商事        → 該当顧客の機種一覧を返す
+GET: ?username=admin&models=1                → 全機種一覧を返す
+GET: ?username=admin&model=AAA001            → 指定機種のデータをグループ化して返す
 """
 
 import json
@@ -69,7 +71,9 @@ def main():
     qs     = os.environ.get("QUERY_STRING", "")
     parsed = parse_qs(qs, keep_blank_values=True)
     username = parsed.get("username", [""])[0]
+    customer = parsed.get("customer", [""])[0]
     model    = parsed.get("model", [""])[0]
+    get_models = parsed.get("models", [""])[0]
 
     if not username:
         send_json({"success": False, "error": "username は必須です"})
@@ -107,11 +111,20 @@ def main():
         send_json({"success": False, "error": "CSV読み込みエラー: " + str(e)})
         return
 
-    model_header   = col_map.get("model", "機種")
-    order_header   = col_map.get("order_number", "注文番号")
-    lot_header     = col_map.get("lot_number", "LOT番号")
-    qty_header     = col_map.get("quantity", "個数")
-    process_header = col_map.get("process", "工程")
+    customer_header = col_map.get("customer", "")
+    model_header    = col_map.get("model", "機種")
+    order_header    = col_map.get("order_number", "注文番号")
+    lot_header      = col_map.get("lot_number", "LOT番号")
+    qty_header      = col_map.get("quantity", "個数")
+    process_header  = col_map.get("process", "工程")
+
+    # 顧客列インデックス（設定されている場合のみ）
+    customer_idx = -1
+    if customer_header:
+        try:
+            customer_idx = headers.index(customer_header)
+        except ValueError:
+            pass  # 顧客列が見つからない場合は無視
 
     try:
         model_idx   = headers.index(model_header)
@@ -129,13 +142,33 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
-    if not model:
+    # 顧客一覧取得（model も get_models も指定なし）
+    if not model and not get_models:
+        if customer_idx >= 0:
+            customers = sorted(set(
+                row[customer_idx] for row in rows
+                if len(row) > customer_idx and row[customer_idx].strip()
+            ))
+        else:
+            customers = []
+        write_log(username, "顧客一覧取得", "件数: {}".format(len(customers)))
+        send_json({"success": True, "customers": customers})
+        return
+
+    # 機種一覧取得（customer フィルターあり or 全機種）
+    if not model and get_models:
+        if customer and customer_idx >= 0:
+            target_rows = [row for row in rows
+                           if len(row) > customer_idx and row[customer_idx] == customer]
+        else:
+            target_rows = rows
         models = sorted(set(
-            row[model_idx] for row in rows
+            row[model_idx] for row in target_rows
             if len(row) > model_idx and row[model_idx].strip()
         ))
-        write_log(username, "機種一覧取得", "件数: {}".format(len(models)))
-        send_json({"success": True, "models": models})
+        write_log(username, "機種一覧取得",
+                  "顧客={} 件数: {}".format(customer or "(全て)", len(models)))
+        send_json({"success": True, "models": models, "customer": customer})
         return
 
     filtered = [row for row in rows if len(row) > model_idx and row[model_idx] == model]
@@ -182,6 +215,7 @@ def main():
         "model":   model,
         "groups":  result_groups,
         "column_labels": {
+            "customer":     customer_header,
             "model":        model_header,
             "order_number": order_header,
             "lot_number":   lot_header,
