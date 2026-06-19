@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ロット管理</title>
+  <style>
+    :root {
+      --bg:         #f0f4f8;
+      --surface:    #ffffff;
+      --border:     #d0d7e2;
+      --primary:    #2563eb;
+      --primary-h:  #1d4ed8;
+      --danger:     #dc2626;
+      --success:    #16a34a;
+      --text:       #1e293b;
+      --text-muted: #64748b;
+      --radius:     8px;
+      --shadow:     0 1px 4px rgba(0,0,0,.10);
+      --shadow-md:  0 4px 16px rgba(0,0,0,.12);
+      --group-border: #1e3a5f;
+      --card-changed: #fef3c7;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============ ログイン画面 ============ */
+    #login-screen {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-card {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      padding: 40px 36px 32px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-card .logo {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .login-card h2 {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 28px;
+      color: var(--text);
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+      background: #fff;
+    }
+    .login-error {
+      font-size: 12px;
+      color: var(--danger);
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .login-error.show { display: block; }
+
+    /* ============ ボタン ============ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: var(--radius);
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-h); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #15803d; }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { background: var(--bg); color: var(--text); }
+    .btn-warning { background: #f59e0b; color: #fff; }
+    .btn-warning:hover:not(:disabled) { background: #d97706; }
+    #btn-login {
+      width: 100%;
+      margin-top: 8px;
+      justify-content: center;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    /* ============ ヘッダー ============ */
+    #app-header {
+      display: none;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    #app-header.show { display: flex; }
+    #app-header h1 { font-size: 15px; font-weight: 700; white-space: nowrap; }
+    .header-separator { width: 1px; height: 28px; background: var(--border); }
+    .model-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .model-selector select {
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+      min-width: 160px;
+    }
+    .model-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .user-badge strong { color: var(--text); }
+    #app-header .spacer { flex: 1; }
+    #change-badge {
+      display: none;
+      background: #ef4444;
+      color: #fff;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    #change-badge.show { display: inline-block; }
+
+    /* ============ ステータスバー ============ */
+    #status-bar {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: var(--radius);
+      display: none;
+    }
+    #status-bar.show { display: inline-block; }
+    #status-bar.info    { background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+    #status-bar.success { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
+    #status-bar.error   { background: #fef2f2; color: var(--danger);  border: 1px solid #fecaca; }
+
+    /* ============ メイン ============ */
+    #main {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      padding: 20px;
+      gap: 16px;
+    }
+    #main.show { display: flex; }
+
+    /* ============ ボード ============ */
+    #board {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+      min-height: 300px;
+      padding: 10px;
+    }
+    #board.drag-active {
+      background: rgba(37,99,235,.03);
+      border-radius: var(--radius);
+    }
+
+    /* 空状態 */
+    #empty-state {
+      display: none;
+      flex: 1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    #empty-state.show { display: block; }
+
+    /* ============ 注文番号グループ ============ */
+    .order-group {
+      background: var(--surface);
+      border: 2px solid var(--group-border);
+      border-radius: var(--radius);
+      min-width: 280px;
+      max-width: 360px;
+      flex: 0 0 auto;
+      box-shadow: var(--shadow);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .order-group.drag-over {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.25), var(--shadow-md);
+    }
+    .order-group.unassigned {
+      border-style: dashed;
+      border-color: #94a3b8;
+    }
+    .order-group.unassigned .group-header {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--group-border);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 5px 5px 0 0;
+    }
+    .group-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .group-total {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .group-subheader {
+      display: flex;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+    .group-subheader span:nth-child(1) { flex: 1; }
+    .group-subheader span:nth-child(2) { width: 50px; text-align: right; }
+    .group-subheader span:nth-child(3) { width: 60px; text-align: right; }
+
+    /* ============ カードコンテナ ============ */
+    .group-cards {
+      min-height: 50px;
+      padding: 6px;
+      transition: background .2s;
+    }
+    .group-cards.empty-hint::after {
+      content: "ここにカードをドロップ";
+      display: block;
+      text-align: center;
+      padding: 16px 10px;
+      color: #94a3b8;
+      font-size: 12px;
+      border: 2px dashed #cbd5e1;
+      border-radius: var(--radius);
+      margin: 4px;
+    }
+
+    /* ============ ロットカード ============ */
+    .lot-card {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      margin: 4px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 4px;
+      cursor: grab;
+      transition: box-shadow .15s, opacity .15s, background .15s, border-color .15s;
+      user-select: none;
+    }
+    .lot-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .lot-card.dragging {
+      opacity: 0.4;
+      cursor: grabbing;
+    }
+    .lot-card.changed {
+      background: var(--card-changed);
+      border-left-color: #f59e0b;
+    }
+    .lot-card .card-lot { flex: 1; font-size: 13px; font-weight: 600; font-family: monospace; }
+    .lot-card .card-qty { width: 50px; text-align: right; font-size: 13px; font-weight: 600; }
+    .lot-card .card-process { width: 60px; text-align: right; font-size: 12px; color: var(--text-muted); font-family: monospace; }
+
+    /* ============ ローディング ============ */
+    #loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,.75);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    #loading.show { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading">
+  <div class="spinner"></div>
+  <span id="loading-msg">読み込み中...</span>
+</div>
+
+<!-- ============ ログイン画面 ============ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">LOT</div>
+    <h2>ロット管理</h2>
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label>ユーザー名</label>
+      <input type="text" id="input-username" autocomplete="username" placeholder="ユーザー名を入力">
+    </div>
+    <div class="form-group">
+      <label>パスワード</label>
+      <input type="password" id="input-password" autocomplete="current-password" placeholder="パスワードを入力">
+    </div>
+    <button class="btn btn-primary" id="btn-login" onclick="doLogin()">ログイン</button>
+  </div>
+</div>
+
+<!-- ============ アプリヘッダー ============ -->
+<header id="app-header">
+  <h1>ロット管理</h1>
+  <div class="header-separator"></div>
+  <div class="model-selector">
+    <label for="model-select">機種:</label>
+    <select id="model-select" onchange="onModelChange()">
+      <option value="">-- 選択してください --</option>
+    </select>
+  </div>
+  <div class="header-separator"></div>
+  <button class="btn btn-success" id="btn-save" onclick="saveChanges()" disabled>保存</button>
+  <span id="change-badge"></span>
+  <button class="btn btn-warning" id="btn-reset" onclick="resetChanges()" style="display:none;">リセット</button>
+  <div class="spacer"></div>
+  <span id="status-bar"></span>
+  <div class="user-badge">
+    <strong id="header-display-name"></strong>
+  </div>
+  <button class="btn btn-ghost" onclick="doLogout()" style="padding:5px 12px;font-size:12px;">ログアウト</button>
+</header>
+
+<!-- ============ メイン ============ -->
+<main id="main">
+  <div id="empty-state">
+    上部のドロップダウンから機種を選択してください
+  </div>
+  <div id="board"></div>
+</main>
+
+<script>
+/* =================================================================
+   URL
+   ================================================================= */
+var AUTH_URL = "auth.py";
+var LOAD_URL = "load_data.py";
+var SAVE_URL = "save_data.py";
+
+/* =================================================================
+   状態管理
+   ================================================================= */
+var currentUser = null;
+var currentModel = null;
+var allLots = [];
+var originalAssignments = {};
+var columnLabels = {};
+var draggedLotNumber = null;
+
+/* =================================================================
+   Polyfill
+   ================================================================= */
+if (!Element.prototype.closest) {
+  Element.prototype.closest = function(s) {
+    var el = this;
+    do {
+      if (el.matches(s)) return el;
+      el = el.parentElement || el.parentNode;
+    } while (el !== null && el.nodeType === 1);
+    return null;
+  };
+}
+if (!Element.prototype.matches) {
+  Element.prototype.matches =
+    Element.prototype.msMatchesSelector ||
+    Element.prototype.webkitMatchesSelector;
+}
+
+/* =================================================================
+   初期化
+   ================================================================= */
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("input-password").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") doLogin();
+  });
+  document.getElementById("input-username").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") document.getElementById("input-password").focus();
+  });
+});
+
+/* =================================================================
+   ログイン
+   ================================================================= */
+function doLogin() {
+  var username = document.getElementById("input-username").value.trim();
+  var password = document.getElementById("input-password").value;
+  var errEl = document.getElementById("login-error");
+
+  errEl.classList.remove("show");
+  if (!username || !password) {
+    errEl.textContent = "ユーザー名とパスワードを入力してください";
+    errEl.classList.add("show");
+    return;
+  }
+
+  var btn = document.getElementById("btn-login");
+  btn.disabled = true;
+  btn.textContent = "認証中...";
+
+  fetch(AUTH_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ username: username, password: password })
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = "ログイン";
+    if (!data.success) {
+      errEl.textContent = data.error || "ログインに失敗しました";
+      errEl.classList.add("show");
+      document.getElementById("input-password").value = "";
+      return;
+    }
+    currentUser = data;
+    document.getElementById("input-password").value = "";
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("header-display-name").textContent = data.display_name;
+    document.getElementById("app-header").classList.add("show");
+    document.getElementById("main").classList.add("show");
+    document.getElementById("empty-state").classList.add("show");
+    loadModels();
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.textContent = "ログイン";
+    errEl.textContent = "通信エラー: " + err.message;
+    errEl.classList.add("show");
+  });
+}
+
+/* =================================================================
+   ログアウト
+   ================================================================= */
+function doLogout() {
+  if (getChanges().length > 0) {
+    if (!confirm("未保存の変更があります。ログアウトしてもよいですか？")) return;
+  }
+  currentUser = null;
+  currentModel = null;
+  allLots = [];
+  originalAssignments = {};
+  draggedLotNumber = null;
+
+  document.getElementById("login-screen").style.display = "";
+  document.getElementById("app-header").classList.remove("show");
+  document.getElementById("main").classList.remove("show");
+  document.getElementById("board").innerHTML = "";
+  document.getElementById("empty-state").classList.remove("show");
+  document.getElementById("model-select").innerHTML = '<option value="">-- 選択してください --</option>';
+  hideStatus();
+  updateChangeUI();
+}
+
+/* =================================================================
+   機種一覧読み込み
+   ================================================================= */
+function loadModels() {
+  showLoading("機種一覧を読み込み中...");
+  fetch(LOAD_URL + "?username=" + encodeURIComponent(currentUser.username))
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    hideLoading();
+    if (!data.success) {
+      showStatus(data.error, "error");
+      return;
+    }
+    var sel = document.getElementById("model-select");
+    sel.innerHTML = '<option value="">-- 選択してください --</option>';
+    data.models.forEach(function(m) {
+      var opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    });
+  })
+  .catch(function(err) {
+    hideLoading();
+    showStatus("通信エラー: " + err.message, "error");
+  });
+}
+
+/* =================================================================
+   機種選択変更
+   ================================================================= */
+function onModelChange() {
+  var model = document.getElementById("model-select").value;
+  if (!model) {
+    document.getElementById("board").innerHTML = "";
+    document.getElementById("empty-state").classList.add("show");
+    currentModel = null;
+    allLots = [];
+    originalAssignments = {};
+    updateChangeUI();
+    return;
+  }
+  if (currentModel && getChanges().length > 0) {
+    if (!confirm("未保存の変更があります。機種を切り替えると変更が失われます。よろしいですか？")) {
+      document.getElementById("model-select").value = currentModel;
+      return;
+    }
+  }
+  loadModelData(model);
+}
+
+/* =================================================================
+   データ読み込み
+   ================================================================= */
+function loadModelData(model) {
+  showLoading("データ読み込み中...");
+  var url = LOAD_URL + "?username=" + encodeURIComponent(currentUser.username)
+            + "&model=" + encodeURIComponent(model);
+  fetch(url)
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    hideLoading();
+    if (!data.success) {
+      showStatus(data.error, "error");
+      return;
+    }
+    currentModel = model;
+    columnLabels = data.column_labels || {};
+    allLots = [];
+    originalAssignments = {};
+
+    data.groups.forEach(function(g) {
+      g.lots.forEach(function(lot) {
+        allLots.push({
+          lot_number: lot.lot_number,
+          quantity: lot.quantity,
+          process: lot.process,
+          order_number: lot.order_number
+        });
+        originalAssignments[lot.lot_number] = lot.order_number;
+      });
+    });
+
+    renderBoard();
+    updateChangeUI();
+    document.getElementById("empty-state").classList.remove("show");
+    showStatus("機種: " + model + " (" + allLots.length + " ロット)", "info");
+  })
+  .catch(function(err) {
+    hideLoading();
+    showStatus("通信エラー: " + err.message, "error");
+  });
+}
+
+/* =================================================================
+   ボード描画
+   ================================================================= */
+function renderBoard() {
+  var board = document.getElementById("board");
+  board.innerHTML = "";
+
+  var groups = {};
+  var groupOrder = [];
+  allLots.forEach(function(lot) {
+    var order = lot.order_number;
+    if (!groups[order]) {
+      groups[order] = [];
+      groupOrder.push(order);
+    }
+    groups[order].push(lot);
+  });
+
+  groupOrder.sort(function(a, b) {
+    if (a === "" && b !== "") return 1;
+    if (a !== "" && b === "") return -1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+  });
+
+  if (groupOrder.indexOf("") === -1) {
+    groupOrder.push("");
+    groups[""] = [];
+  }
+
+  groupOrder.forEach(function(orderNum) {
+    var lots = groups[orderNum];
+    var groupEl = createGroupElement(orderNum, lots);
+    board.appendChild(groupEl);
+  });
+
+  setupBoardDragDrop();
+}
+
+/* =================================================================
+   グループ要素作成
+   ================================================================= */
+function createGroupElement(orderNumber, lots) {
+  var isUnassigned = (orderNumber === "");
+  var total = 0;
+  lots.forEach(function(l) {
+    var q = parseInt(l.quantity, 10);
+    if (!isNaN(q)) total += q;
+  });
+
+  var group = document.createElement("div");
+  group.className = "order-group" + (isUnassigned ? " unassigned" : "");
+  group.dataset.order = orderNumber;
+
+  var header = document.createElement("div");
+  header.className = "group-header";
+
+  var headerLeft = document.createElement("div");
+  headerLeft.className = "group-header-left";
+
+  var labelSpan = document.createElement("span");
+  if (isUnassigned) {
+    labelSpan.textContent = "未設定";
+  } else {
+    labelSpan.textContent = (columnLabels.order_number || "注文番号") + "  " + orderNumber;
+  }
+  headerLeft.appendChild(labelSpan);
+
+  var totalSpan = document.createElement("span");
+  totalSpan.className = "group-total";
+  totalSpan.textContent = total;
+  totalSpan.dataset.totalFor = orderNumber;
+
+  header.appendChild(headerLeft);
+  header.appendChild(totalSpan);
+  group.appendChild(header);
+
+  var subheader = document.createElement("div");
+  subheader.className = "group-subheader";
+  var sh1 = document.createElement("span");
+  sh1.textContent = columnLabels.lot_number || "LOT番号";
+  var sh2 = document.createElement("span");
+  sh2.textContent = columnLabels.quantity || "個数";
+  var sh3 = document.createElement("span");
+  sh3.textContent = columnLabels.process || "工程";
+  subheader.appendChild(sh1);
+  subheader.appendChild(sh2);
+  subheader.appendChild(sh3);
+  group.appendChild(subheader);
+
+  var cardsContainer = document.createElement("div");
+  cardsContainer.className = "group-cards" + (lots.length === 0 ? " empty-hint" : "");
+  cardsContainer.dataset.order = orderNumber;
+
+  lots.forEach(function(lot) {
+    var card = createCardElement(lot);
+    cardsContainer.appendChild(card);
+  });
+
+  group.appendChild(cardsContainer);
+
+  cardsContainer.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    group.classList.add("drag-over");
+  });
+  cardsContainer.addEventListener("dragleave", function(e) {
+    if (!cardsContainer.contains(e.relatedTarget)) {
+      group.classList.remove("drag-over");
+    }
+  });
+  cardsContainer.addEventListener("drop", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    group.classList.remove("drag-over");
+    var lotNumber = e.dataTransfer.getData("text/plain");
+    if (lotNumber) {
+      moveCard(lotNumber, orderNumber);
+    }
+  });
+
+  return group;
+}
+
+/* =================================================================
+   カード要素作成
+   ================================================================= */
+function createCardElement(lot) {
+  var card = document.createElement("div");
+  card.className = "lot-card";
+  card.draggable = true;
+  card.dataset.lot = lot.lot_number;
+
+  if (originalAssignments[lot.lot_number] !== lot.order_number) {
+    card.classList.add("changed");
+  }
+
+  var lotSpan = document.createElement("span");
+  lotSpan.className = "card-lot";
+  lotSpan.textContent = lot.lot_number;
+
+  var qtySpan = document.createElement("span");
+  qtySpan.className = "card-qty";
+  qtySpan.textContent = lot.quantity;
+
+  var procSpan = document.createElement("span");
+  procSpan.className = "card-process";
+  procSpan.textContent = lot.process;
+
+  card.appendChild(lotSpan);
+  card.appendChild(qtySpan);
+  card.appendChild(procSpan);
+
+  card.addEventListener("dragstart", function(e) {
+    draggedLotNumber = lot.lot_number;
+    e.dataTransfer.setData("text/plain", lot.lot_number);
+    e.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging");
+    document.getElementById("board").classList.add("drag-active");
+  });
+  card.addEventListener("dragend", function() {
+    card.classList.remove("dragging");
+    document.getElementById("board").classList.remove("drag-active");
+    removeAllDragOver();
+    draggedLotNumber = null;
+  });
+
+  return card;
+}
+
+/* =================================================================
+   ボードのドラッグ＆ドロップ（枠外ドロップ→未設定）
+   ================================================================= */
+function setupBoardDragDrop() {
+  var board = document.getElementById("board");
+  board.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+  board.addEventListener("drop", function(e) {
+    e.preventDefault();
+    var lotNumber = e.dataTransfer.getData("text/plain");
+    if (lotNumber) {
+      moveCard(lotNumber, "");
+    }
+    removeAllDragOver();
+  });
+}
+
+/* =================================================================
+   カード移動
+   ================================================================= */
+function moveCard(lotNumber, targetOrder) {
+  var lot = null;
+  for (var i = 0; i < allLots.length; i++) {
+    if (allLots[i].lot_number === lotNumber) {
+      lot = allLots[i];
+      break;
+    }
+  }
+  if (!lot) return;
+  if (lot.order_number === targetOrder) return;
+
+  lot.order_number = targetOrder;
+  renderBoard();
+  updateChangeUI();
+}
+
+/* =================================================================
+   変更検出・UI更新
+   ================================================================= */
+function getChanges() {
+  var changes = [];
+  allLots.forEach(function(lot) {
+    var orig = originalAssignments[lot.lot_number];
+    if (orig !== lot.order_number) {
+      changes.push({
+        lot_number: lot.lot_number,
+        new_order_number: lot.order_number
+      });
+    }
+  });
+  return changes;
+}
+
+function updateChangeUI() {
+  var changes = getChanges();
+  var badge = document.getElementById("change-badge");
+  var btnSave = document.getElementById("btn-save");
+  var btnReset = document.getElementById("btn-reset");
+
+  if (changes.length > 0) {
+    badge.textContent = changes.length + " 件変更";
+    badge.classList.add("show");
+    btnSave.disabled = false;
+    btnReset.style.display = "";
+  } else {
+    badge.classList.remove("show");
+    btnSave.disabled = true;
+    btnReset.style.display = "none";
+  }
+}
+
+/* =================================================================
+   変更リセット
+   ================================================================= */
+function resetChanges() {
+  if (!confirm("すべての変更を元に戻しますか？")) return;
+  allLots.forEach(function(lot) {
+    lot.order_number = originalAssignments[lot.lot_number];
+  });
+  renderBoard();
+  updateChangeUI();
+  showStatus("変更をリセットしました", "info");
+}
+
+/* =================================================================
+   保存
+   ================================================================= */
+function saveChanges() {
+  var changes = getChanges();
+  if (changes.length === 0) {
+    showStatus("変更はありません", "info");
+    return;
+  }
+
+  if (!confirm(changes.length + " 件の変更を保存しますか？")) return;
+
+  showLoading("保存中...");
+
+  fetch(SAVE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      username: currentUser.username,
+      model: currentModel,
+      changes: changes
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    hideLoading();
+    if (!data.success) {
+      showStatus("保存エラー: " + data.error, "error");
+      return;
+    }
+    allLots.forEach(function(lot) {
+      originalAssignments[lot.lot_number] = lot.order_number;
+    });
+    renderBoard();
+    updateChangeUI();
+    showStatus(data.message, "success");
+  })
+  .catch(function(err) {
+    hideLoading();
+    showStatus("通信エラー: " + err.message, "error");
+  });
+}
+
+/* =================================================================
+   ユーティリティ
+   ================================================================= */
+function removeAllDragOver() {
+  var els = document.querySelectorAll(".order-group.drag-over");
+  for (var i = 0; i < els.length; i++) {
+    els[i].classList.remove("drag-over");
+  }
+}
+
+function showLoading(msg) {
+  document.getElementById("loading-msg").textContent = msg || "読み込み中...";
+  document.getElementById("loading").classList.add("show");
+}
+
+function hideLoading() {
+  document.getElementById("loading").classList.remove("show");
+}
+
+function showStatus(msg, type) {
+  var bar = document.getElementById("status-bar");
+  bar.textContent = msg;
+  bar.className = type + " show";
+}
+
+function hideStatus() {
+  var bar = document.getElementById("status-bar");
+  bar.className = "";
+  bar.textContent = "";
+}
+</script>
+</body>
+</html>

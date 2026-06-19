@@ -1,0 +1,28 @@
+{
+  "data_file": {
+    "csv_file_path": "sample_data.csv",
+    "read_encoding": "utf-8-sig",
+    "write_encoding": "utf-8-sig",
+    "newline": "\r\n",
+    "create_backup": true
+  },
+  "column_mapping": {
+    "model": "機種",
+    "order_number": "注文番号",
+    "lot_number": "LOT番号",
+    "quantity": "個数",
+    "process": "工程"
+  },
+  "users": [
+    {
+      "username": "admin",
+      "display_name": "管理者",
+      "password": "password123"
+    },
+    {
+      "username": "user1",
+      "display_name": "ユーザー1",
+      "password": "pass456"
+    }
+  ]
+}
