@@ -859,11 +859,14 @@ function createGroupElement(orderNumber, lots) {
 function createCardElement(lot) {
   var card = document.createElement("div");
   card.className = "lot-card";
-  card.draggable = true;
   card.dataset.lot = lot.lot_number;
 
   if (lot.shipped) {
     card.classList.add("shipped");
+    card.draggable = false;
+    card.style.cursor = "default";
+  } else {
+    card.draggable = true;
   }
 
   if (originalAssignments[lot.lot_number] !== lot.order_number) {
@@ -892,19 +895,21 @@ function createCardElement(lot) {
       + ", " + (columnLabels.shipped_quantity || "出荷時個数") + ": " + lot.shipped_quantity + ")";
   }
 
-  card.addEventListener("dragstart", function(e) {
-    draggedLotNumber = lot.lot_number;
-    e.dataTransfer.setData("text/plain", lot.lot_number);
-    e.dataTransfer.effectAllowed = "move";
-    card.classList.add("dragging");
-    document.getElementById("board").classList.add("drag-active");
-  });
-  card.addEventListener("dragend", function() {
-    card.classList.remove("dragging");
-    document.getElementById("board").classList.remove("drag-active");
-    removeAllDragOver();
-    draggedLotNumber = null;
-  });
+  if (!lot.shipped) {
+    card.addEventListener("dragstart", function(e) {
+      draggedLotNumber = lot.lot_number;
+      e.dataTransfer.setData("text/plain", lot.lot_number);
+      e.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+      document.getElementById("board").classList.add("drag-active");
+    });
+    card.addEventListener("dragend", function() {
+      card.classList.remove("dragging");
+      document.getElementById("board").classList.remove("drag-active");
+      removeAllDragOver();
+      draggedLotNumber = null;
+    });
+  }
 
   return card;
 }
