@@ -299,7 +299,11 @@ def main():
     if req_file_cfg:
         req_qty_label = req_file_cfg.get("column_mapping", {}).get("required_quantity", "")
 
-    send_json({
+    # レポート取込設定
+    report_import_cfg = setting.get("report_import", {})
+    report_import_col = report_import_cfg.get("column_mapping", {})
+
+    resp = {
         "success": True,
         "model":   model,
         "groups":  result_groups,
@@ -314,7 +318,16 @@ def main():
             "shipped_quantity":     shipped_qty_header,
             "required_quantity":    req_qty_label,
         },
-    })
+    }
+
+    # admin ユーザーの場合のみレポート取込設定を返す
+    if matched_user.get("username") == "admin" and report_import_col:
+        resp["report_import"] = {
+            "lot_number_header":   report_import_col.get("lot_number", ""),
+            "order_number_header": report_import_col.get("order_number", ""),
+        }
+
+    send_json(resp)
 
 if __name__ == "__main__":
     main()
