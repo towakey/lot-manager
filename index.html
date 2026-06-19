@@ -263,6 +263,29 @@
       background: #f1f5f9;
       color: #475569;
     }
+    .order-group.qty-match {
+      border-color: #16a34a;
+    }
+    .order-group.qty-match .group-header {
+      background: #16a34a;
+    }
+    .order-group.qty-over {
+      border-color: #dc2626;
+    }
+    .order-group.qty-over .group-header {
+      background: #dc2626;
+    }
+    .order-group.qty-under {
+      border-color: #f59e0b;
+    }
+    .order-group.qty-under .group-header {
+      background: #f59e0b;
+    }
+    .required-info {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.9;
+    }
     .group-header {
       display: flex;
       align-items: center;
@@ -457,6 +480,7 @@ var currentModel = null;
 var allLots = [];
 var originalAssignments = {};
 var columnLabels = {};
+var requiredQuantities = {};
 var draggedLotNumber = null;
 
 /* =================================================================
@@ -556,6 +580,7 @@ function doLogout() {
   currentModel = null;
   allLots = [];
   originalAssignments = {};
+  requiredQuantities = {};
   draggedLotNumber = null;
 
   document.getElementById("login-screen").style.display = "";
@@ -700,8 +725,12 @@ function loadModelData(model) {
     columnLabels = data.column_labels || {};
     allLots = [];
     originalAssignments = {};
+    requiredQuantities = {};
 
     data.groups.forEach(function(g) {
+      if (typeof g.required_quantity !== "undefined") {
+        requiredQuantities[g.order_number] = g.required_quantity;
+      }
       g.lots.forEach(function(lot) {
         allLots.push({
           lot_number: lot.lot_number,
@@ -782,6 +811,18 @@ function createGroupElement(orderNumber, lots) {
   group.className = "order-group" + (isUnassigned ? " unassigned" : "");
   group.dataset.order = orderNumber;
 
+  // 必要数による色分け
+  var reqQty = requiredQuantities[orderNumber];
+  if (!isUnassigned && typeof reqQty !== "undefined") {
+    if (total === reqQty) {
+      group.classList.add("qty-match");
+    } else if (total > reqQty) {
+      group.classList.add("qty-over");
+    } else {
+      group.classList.add("qty-under");
+    }
+  }
+
   var header = document.createElement("div");
   header.className = "group-header";
 
@@ -795,6 +836,14 @@ function createGroupElement(orderNumber, lots) {
     labelSpan.textContent = (columnLabels.order_number || "注文番号") + "  " + orderNumber;
   }
   headerLeft.appendChild(labelSpan);
+
+  // 必要数表示
+  if (!isUnassigned && typeof reqQty !== "undefined") {
+    var reqSpan = document.createElement("span");
+    reqSpan.className = "required-info";
+    reqSpan.textContent = "(" + (columnLabels.required_quantity || "必要数") + " " + reqQty + " / " + (columnLabels.quantity || "現在数") + " " + total + ")";
+    headerLeft.appendChild(reqSpan);
+  }
 
   var totalSpan = document.createElement("span");
   totalSpan.className = "group-total";

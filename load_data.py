@@ -235,6 +235,43 @@ def main():
             "shipped_order":    shipped_order_val,
         })
 
+    # 必要数管理ファイルの読み込み
+    required_map = {}
+    req_file_cfg = setting.get("required_quantity_file", {})
+    req_csv_path = req_file_cfg.get("csv_file_path", "")
+    if req_csv_path:
+        if not os.path.isabs(req_csv_path):
+            req_csv_path = os.path.join(SCRIPT_DIR, req_csv_path)
+        req_enc = normalize_encoding(req_file_cfg.get("read_encoding", "utf-8"))
+        req_col = req_file_cfg.get("column_mapping", {})
+        req_model_header = req_col.get("model", "")
+        req_order_header = req_col.get("order_number", "")
+        req_qty_header   = req_col.get("required_quantity", "")
+
+        if os.path.exists(req_csv_path) and req_model_header and req_order_header and req_qty_header:
+            try:
+                with open(req_csv_path, mode="r", encoding=req_enc, newline="") as rf:
+                    req_reader = csv.reader(rf)
+                    req_headers = []
+                    for ri, rrow in enumerate(req_reader):
+                        if ri == 0:
+                            req_headers = rrow
+                        else:
+                            try:
+                                rm_idx = req_headers.index(req_model_header)
+                                ro_idx = req_headers.index(req_order_header)
+                                rq_idx = req_headers.index(req_qty_header)
+                            except ValueError:
+                                break
+                            if len(rrow) > max(rm_idx, ro_idx, rq_idx):
+                                if rrow[rm_idx] == model:
+                                    try:
+                                        required_map[rrow[ro_idx]] = int(rrow[rq_idx])
+                                    except (ValueError, TypeError):
+                                        pass
+            except Exception:
+                pass
+
     result_groups = []
     for order_num in sorted(groups.keys(), key=lambda x: (x == "", x)):
         lots  = groups[order_num]
@@ -244,16 +281,23 @@ def main():
                 total += int(l["quantity"])
             except (ValueError, TypeError):
                 pass
-        result_groups.append({
-            "order_number":   order_num,
-            "total_quantity": total,
-            "lots":           lots,
-        })
+        group_data = {
+            "order_number":     order_num,
+            "total_quantity":   total,
+            "lots":             lots,
+        }
+        if order_num in required_map:
+            group_data["required_quantity"] = required_map[order_num]
+        result_groups.append(group_data)
 
     write_log(username, "データ読み込み",
               "機種={} グループ数={} ロット数={}".format(
                   model, len(result_groups),
                   sum(len(g["lots"]) for g in result_groups)))
+
+    req_qty_label = ""
+    if req_file_cfg:
+        req_qty_label = req_file_cfg.get("column_mapping", {}).get("required_quantity", "")
 
     send_json({
         "success": True,
@@ -268,6 +312,7 @@ def main():
             "process":              process_header,
             "shipped_order_number": shipped_order_header,
             "shipped_quantity":     shipped_qty_header,
+            "required_quantity":    req_qty_label,
         },
     })
 

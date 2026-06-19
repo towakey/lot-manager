@@ -16,6 +16,15 @@
     "shipped_order_number": "出荷時注文番号",
     "shipped_quantity": "出荷時個数"
   },
+  "required_quantity_file": {
+    "csv_file_path": "sample_required.csv",
+    "read_encoding": "utf-8",
+    "column_mapping": {
+      "model": "機種",
+      "order_number": "注文番号",
+      "required_quantity": "必要個数"
+    }
+  },
   "users": [
     {
       "username": "admin",
