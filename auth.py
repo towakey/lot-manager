@@ -17,11 +17,12 @@ LOG_PATH     = os.path.join(SCRIPT_DIR, "log.csv")
 
 def send_json(obj):
     body = json.dumps(obj, ensure_ascii=False)
-    sys.stdout.write("Content-Type: application/json; charset=utf-8\r\n")
-    sys.stdout.write("Access-Control-Allow-Origin: *\r\n")
-    sys.stdout.write("\r\n")
-    sys.stdout.write(body)
-    sys.stdout.flush()
+    output = "Content-Type: application/json; charset=utf-8\r\n"
+    output += "Access-Control-Allow-Origin: *\r\n"
+    output += "\r\n"
+    output += body
+    sys.stdout.buffer.write(output.encode("utf-8"))
+    sys.stdout.buffer.flush()
 
 def write_log(username, action, detail=""):
     timestamp   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -60,7 +61,7 @@ def main():
         return
 
     try:
-        with open(SETTING_PATH, mode="r", encoding="utf-8") as f:
+        with open(SETTING_PATH, mode="r", encoding="utf-8-sig") as f:
             setting = json.load(f)
     except json.JSONDecodeError as e:
         send_json({"success": False, "error": "setting.json の形式エラー: " + str(e)})

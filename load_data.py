@@ -30,12 +30,13 @@ ENCODING_MAP = {
 
 def send_json(obj):
     body = json.dumps(obj, ensure_ascii=False)
-    sys.stdout.write("Content-Type: application/json; charset=utf-8\r\n")
-    sys.stdout.write("Access-Control-Allow-Origin: *\r\n")
-    sys.stdout.write("Cache-Control: no-store\r\n")
-    sys.stdout.write("\r\n")
-    sys.stdout.write(body)
-    sys.stdout.flush()
+    output = "Content-Type: application/json; charset=utf-8\r\n"
+    output += "Access-Control-Allow-Origin: *\r\n"
+    output += "Cache-Control: no-store\r\n"
+    output += "\r\n"
+    output += body
+    sys.stdout.buffer.write(output.encode("utf-8"))
+    sys.stdout.buffer.flush()
 
 def normalize_encoding(enc):
     return ENCODING_MAP.get(enc.lower().replace(" ", ""), enc)
@@ -54,7 +55,7 @@ def write_log(username, action, detail=""):
 
 def main():
     try:
-        with open(SETTING_PATH, mode="r", encoding="utf-8") as f:
+        with open(SETTING_PATH, mode="r", encoding="utf-8-sig") as f:
             setting = json.load(f)
     except Exception as e:
         send_json({"success": False, "error": "setting.json 読み込み失敗: " + str(e)})
