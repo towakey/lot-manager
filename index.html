@@ -482,6 +482,8 @@ var originalAssignments = {};
 var columnLabels = {};
 var requiredQuantities = {};
 var draggedLotNumber = null;
+var autoScrollTimer = null;
+var draggedGroupOrder = null;
 
 /* =================================================================
    Polyfill
@@ -882,7 +884,9 @@ function createGroupElement(orderNumber, lots) {
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
-    group.classList.add("drag-over");
+    if (draggedLotNumber) {
+      group.classList.add("drag-over");
+    }
   });
   cardsContainer.addEventListener("dragleave", function(e) {
     if (!cardsContainer.contains(e.relatedTarget)) {
@@ -894,8 +898,51 @@ function createGroupElement(orderNumber, lots) {
     e.stopPropagation();
     group.classList.remove("drag-over");
     var lotNumber = e.dataTransfer.getData("text/plain");
-    if (lotNumber) {
+    if (lotNumber && draggedLotNumber) {
       moveCard(lotNumber, orderNumber);
+    }
+  });
+
+  // グループドラッグ（ヘッダーで掴む）
+  header.draggable = true;
+  header.style.cursor = "grab";
+  header.addEventListener("dragstart", function(e) {
+    draggedGroupOrder = orderNumber;
+    e.dataTransfer.setData("text/group-order", orderNumber);
+    e.dataTransfer.effectAllowed = "move";
+    group.style.opacity = "0.4";
+  });
+  header.addEventListener("drag", function(e) {
+    if (e.clientX !== 0 || e.clientY !== 0) {
+      startAutoScroll(e);
+    }
+  });
+  header.addEventListener("dragend", function() {
+    group.style.opacity = "";
+    draggedGroupOrder = null;
+    stopAutoScroll();
+    removeAllGroupDragOver();
+  });
+
+  // グループにグループをドロップ（入れ替え）
+  group.addEventListener("dragover", function(e) {
+    if (draggedGroupOrder !== null && draggedGroupOrder !== orderNumber) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      group.classList.add("drag-over");
+    }
+  });
+  group.addEventListener("dragleave", function(e) {
+    if (!group.contains(e.relatedTarget)) {
+      group.classList.remove("drag-over");
+    }
+  });
+  group.addEventListener("drop", function(e) {
+    if (draggedGroupOrder !== null && draggedGroupOrder !== orderNumber) {
+      e.preventDefault();
+      e.stopPropagation();
+      group.classList.remove("drag-over");
+      swapGroups(draggedGroupOrder, orderNumber);
     }
   });
 
@@ -952,10 +999,16 @@ function createCardElement(lot) {
       card.classList.add("dragging");
       document.getElementById("board").classList.add("drag-active");
     });
+    card.addEventListener("drag", function(e) {
+      if (e.clientX !== 0 || e.clientY !== 0) {
+        startAutoScroll(e);
+      }
+    });
     card.addEventListener("dragend", function() {
       card.classList.remove("dragging");
       document.getElementById("board").classList.remove("drag-active");
       removeAllDragOver();
+      stopAutoScroll();
       draggedLotNumber = null;
     });
   }
@@ -1091,6 +1144,72 @@ function saveChanges() {
     hideLoading();
     showStatus("通信エラー: " + err.message, "error");
   });
+}
+
+/* =================================================================
+   グループ入れ替え
+   ================================================================= */
+function swapGroups(fromOrder, toOrder) {
+  var board = document.getElementById("board");
+  var groups = board.querySelectorAll(".order-group");
+  var fromEl = null, toEl = null;
+  for (var i = 0; i < groups.length; i++) {
+    if (groups[i].dataset.order === fromOrder) fromEl = groups[i];
+    if (groups[i].dataset.order === toOrder) toEl = groups[i];
+  }
+  if (!fromEl || !toEl) return;
+
+  var fromNext = fromEl.nextSibling;
+  var toNext = toEl.nextSibling;
+
+  if (fromNext === toEl) {
+    board.insertBefore(toEl, fromEl);
+  } else if (toNext === fromEl) {
+    board.insertBefore(fromEl, toEl);
+  } else {
+    board.insertBefore(fromEl, toNext);
+    board.insertBefore(toEl, fromNext);
+  }
+}
+
+function removeAllGroupDragOver() {
+  var els = document.querySelectorAll(".order-group.drag-over");
+  for (var i = 0; i < els.length; i++) {
+    els[i].classList.remove("drag-over");
+  }
+}
+
+/* =================================================================
+   自動スクロール（ドラッグ中に画面端で自動スクロール）
+   ================================================================= */
+var SCROLL_ZONE = 60;
+var SCROLL_SPEED = 15;
+
+function startAutoScroll(e) {
+  stopAutoScroll();
+  autoScrollTimer = setInterval(function() {
+    var x = e.clientX;
+    var y = e.clientY;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+
+    var dx = 0, dy = 0;
+    if (y < SCROLL_ZONE) dy = -SCROLL_SPEED;
+    else if (y > vh - SCROLL_ZONE) dy = SCROLL_SPEED;
+    if (x < SCROLL_ZONE) dx = -SCROLL_SPEED;
+    else if (x > vw - SCROLL_ZONE) dx = SCROLL_SPEED;
+
+    if (dx !== 0 || dy !== 0) {
+      window.scrollBy(dx, dy);
+    }
+  }, 16);
+}
+
+function stopAutoScroll() {
+  if (autoScrollTimer) {
+    clearInterval(autoScrollTimer);
+    autoScrollTimer = null;
+  }
 }
 
 /* =================================================================
