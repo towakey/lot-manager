@@ -339,6 +339,15 @@
       background: var(--card-changed);
       border-left-color: #f59e0b;
     }
+    .lot-card.shipped {
+      background: #dbeafe;
+      border-left-color: #7c3aed;
+      border-left-width: 4px;
+    }
+    .lot-card.shipped.changed {
+      background: #c7d2fe;
+      border-left-color: #7c3aed;
+    }
     .lot-card .card-lot { flex: 1; font-size: 13px; font-weight: 600; font-family: monospace; }
     .lot-card .card-qty { width: 50px; text-align: right; font-size: 13px; font-weight: 600; }
     .lot-card .card-process { width: 60px; text-align: right; font-size: 12px; color: var(--text-muted); font-family: monospace; }
@@ -697,8 +706,13 @@ function loadModelData(model) {
         allLots.push({
           lot_number: lot.lot_number,
           quantity: lot.quantity,
+          original_quantity: lot.original_quantity || lot.quantity,
           process: lot.process,
-          order_number: lot.order_number
+          order_number: lot.order_number,
+          original_order: lot.original_order || lot.order_number,
+          shipped: lot.shipped || false,
+          shipped_quantity: lot.shipped_quantity || "",
+          shipped_order: lot.shipped_order || ""
         });
         originalAssignments[lot.lot_number] = lot.order_number;
       });
@@ -848,6 +862,10 @@ function createCardElement(lot) {
   card.draggable = true;
   card.dataset.lot = lot.lot_number;
 
+  if (lot.shipped) {
+    card.classList.add("shipped");
+  }
+
   if (originalAssignments[lot.lot_number] !== lot.order_number) {
     card.classList.add("changed");
   }
@@ -867,6 +885,12 @@ function createCardElement(lot) {
   card.appendChild(lotSpan);
   card.appendChild(qtySpan);
   card.appendChild(procSpan);
+
+  if (lot.shipped) {
+    card.title = "出荷済み ("
+      + (columnLabels.shipped_order_number || "出荷時注文番号") + ": " + lot.shipped_order
+      + ", " + (columnLabels.shipped_quantity || "出荷時個数") + ": " + lot.shipped_quantity + ")";
+  }
 
   card.addEventListener("dragstart", function(e) {
     draggedLotNumber = lot.lot_number;
@@ -933,7 +957,8 @@ function getChanges() {
     if (orig !== lot.order_number) {
       changes.push({
         lot_number: lot.lot_number,
-        new_order_number: lot.order_number
+        new_order_number: lot.order_number,
+        shipped: lot.shipped
       });
     }
   });

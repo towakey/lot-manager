@@ -12,7 +12,9 @@
     "order_number": "注文番号",
     "lot_number": "LOT番号",
     "quantity": "個数",
-    "process": "工程"
+    "process": "工程",
+    "shipped_order_number": "出荷時注文番号",
+    "shipped_quantity": "出荷時個数"
   },
   "users": [
     {

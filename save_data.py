@@ -130,9 +130,11 @@ def main():
     newline       = normalize_newline(data_file.get("newline", "\r\n"))
     create_backup = data_file.get("create_backup", True)
 
-    model_header = col_map.get("model", "機種")
-    order_header = col_map.get("order_number", "注文番号")
-    lot_header   = col_map.get("lot_number", "LOT番号")
+    model_header         = col_map.get("model", "機種")
+    order_header         = col_map.get("order_number", "注文番号")
+    lot_header           = col_map.get("lot_number", "LOT番号")
+    shipped_order_header = col_map.get("shipped_order_number", "")
+    shipped_qty_header   = col_map.get("shipped_quantity", "")
 
     try:
         headers = []
@@ -156,19 +158,40 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
+    shipped_order_idx = -1
+    shipped_qty_idx = -1
+    if shipped_order_header:
+        try:
+            shipped_order_idx = headers.index(shipped_order_header)
+        except ValueError:
+            pass
+    if shipped_qty_header:
+        try:
+            shipped_qty_idx = headers.index(shipped_qty_header)
+        except ValueError:
+            pass
+
     change_map = {}
     for c in changes:
         lot_num   = c.get("lot_number", "")
         new_order = c.get("new_order_number", "")
+        is_shipped = c.get("shipped", False)
         if lot_num:
-            change_map[lot_num] = new_order
+            change_map[lot_num] = {"new_order": new_order, "shipped": is_shipped}
 
     updated_count = 0
     max_idx = max(model_idx, order_idx, lot_idx)
     for row in rows:
         if len(row) > max_idx:
             if row[model_idx] == model and row[lot_idx] in change_map:
-                row[order_idx] = change_map[row[lot_idx]]
+                change_info = change_map[row[lot_idx]]
+                if change_info["shipped"] and shipped_order_idx >= 0:
+                    # 出荷済みロット: 出荷時注文番号を更新
+                    if len(row) > shipped_order_idx:
+                        row[shipped_order_idx] = change_info["new_order"]
+                else:
+                    # 通常ロット: 注文番号を更新
+                    row[order_idx] = change_info["new_order"]
                 updated_count += 1
 
     if create_backup and os.path.exists(csv_path):

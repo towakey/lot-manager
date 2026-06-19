@@ -111,12 +111,14 @@ def main():
         send_json({"success": False, "error": "CSV読み込みエラー: " + str(e)})
         return
 
-    customer_header = col_map.get("customer", "")
-    model_header    = col_map.get("model", "機種")
-    order_header    = col_map.get("order_number", "注文番号")
-    lot_header      = col_map.get("lot_number", "LOT番号")
-    qty_header      = col_map.get("quantity", "個数")
-    process_header  = col_map.get("process", "工程")
+    customer_header        = col_map.get("customer", "")
+    model_header           = col_map.get("model", "機種")
+    order_header           = col_map.get("order_number", "注文番号")
+    lot_header             = col_map.get("lot_number", "LOT番号")
+    qty_header             = col_map.get("quantity", "個数")
+    process_header         = col_map.get("process", "工程")
+    shipped_order_header   = col_map.get("shipped_order_number", "")
+    shipped_qty_header     = col_map.get("shipped_quantity", "")
 
     # 顧客列インデックス（設定されている場合のみ）
     customer_idx = -1
@@ -124,7 +126,21 @@ def main():
         try:
             customer_idx = headers.index(customer_header)
         except ValueError:
-            pass  # 顧客列が見つからない場合は無視
+            pass
+
+    # 出荷時列インデックス（設定されている場合のみ）
+    shipped_order_idx = -1
+    shipped_qty_idx = -1
+    if shipped_order_header:
+        try:
+            shipped_order_idx = headers.index(shipped_order_header)
+        except ValueError:
+            pass
+    if shipped_qty_header:
+        try:
+            shipped_qty_idx = headers.index(shipped_qty_header)
+        except ValueError:
+            pass
 
     try:
         model_idx   = headers.index(model_header)
@@ -180,14 +196,43 @@ def main():
         qty     = row[qty_idx]     if len(row) > qty_idx     else "0"
         process = row[process_idx] if len(row) > process_idx else ""
 
-        if order not in groups:
-            groups[order] = []
+        # 出荷時個数・注文番号の判定
+        shipped_qty_val = ""
+        shipped_order_val = ""
+        is_shipped = False
+        if shipped_qty_idx >= 0 and len(row) > shipped_qty_idx:
+            shipped_qty_val = row[shipped_qty_idx].strip()
+        if shipped_order_idx >= 0 and len(row) > shipped_order_idx:
+            shipped_order_val = row[shipped_order_idx].strip()
 
-        groups[order].append({
-            "lot_number":   lot,
-            "quantity":     qty,
-            "process":      process,
-            "order_number": order,
+        # 出荷時個数が0より大きい場合は出荷済み
+        try:
+            if shipped_qty_val and int(shipped_qty_val) > 0:
+                is_shipped = True
+        except (ValueError, TypeError):
+            pass
+
+        # 出荷済みの場合: 注文番号は出荷時注文番号、個数は出荷時個数を使用
+        if is_shipped:
+            effective_order = shipped_order_val if shipped_order_val else order
+            effective_qty = shipped_qty_val
+        else:
+            effective_order = order
+            effective_qty = qty
+
+        if effective_order not in groups:
+            groups[effective_order] = []
+
+        groups[effective_order].append({
+            "lot_number":       lot,
+            "quantity":         effective_qty,
+            "original_quantity": qty,
+            "process":          process,
+            "order_number":     effective_order,
+            "original_order":   order,
+            "shipped":          is_shipped,
+            "shipped_quantity":  shipped_qty_val,
+            "shipped_order":    shipped_order_val,
         })
 
     result_groups = []
@@ -215,12 +260,14 @@ def main():
         "model":   model,
         "groups":  result_groups,
         "column_labels": {
-            "customer":     customer_header,
-            "model":        model_header,
-            "order_number": order_header,
-            "lot_number":   lot_header,
-            "quantity":     qty_header,
-            "process":      process_header,
+            "customer":             customer_header,
+            "model":                model_header,
+            "order_number":         order_header,
+            "lot_number":           lot_header,
+            "quantity":             qty_header,
+            "process":              process_header,
+            "shipped_order_number": shipped_order_header,
+            "shipped_quantity":     shipped_qty_header,
         },
     })
 
