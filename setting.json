@@ -1,8 +1,8 @@
 {
   "data_file": {
     "csv_file_path": "sample_data.csv",
-    "read_encoding": "utf-8-sig",
-    "write_encoding": "utf-8-sig",
+    "read_encoding": "utf-8",
+    "write_encoding": "utf-8",
     "newline": "\r\n",
     "create_backup": true
   },

@@ -16,12 +16,13 @@ SETTING_PATH = os.path.join(SCRIPT_DIR, "setting.json")
 LOG_PATH     = os.path.join(SCRIPT_DIR, "log.csv")
 
 def send_json(obj):
-    body = json.dumps(obj, ensure_ascii=False)
+    body = json.dumps(obj, ensure_ascii=True)
     output = "Content-Type: application/json; charset=utf-8\r\n"
     output += "Access-Control-Allow-Origin: *\r\n"
+    output += "Content-Length: {}\r\n".format(len(body))
     output += "\r\n"
     output += body
-    sys.stdout.buffer.write(output.encode("utf-8"))
+    sys.stdout.buffer.write(output.encode("ascii"))
     sys.stdout.buffer.flush()
 
 def write_log(username, action, detail=""):
