@@ -448,6 +448,10 @@
   <span id="change-badge"></span>
   <button class="btn btn-warning" id="btn-reset" onclick="resetChanges()" style="display:none;">リセット</button>
   <div class="header-separator" id="import-separator" style="display:none;"></div>
+  <select id="import-mode" style="display:none;font-size:12px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;">
+    <option value="current">現在の機種</option>
+    <option value="all">全データ</option>
+  </select>
   <button class="btn btn-ghost" id="btn-import" onclick="document.getElementById('import-file').click()" style="display:none;">ファイル取込</button>
   <input type="file" id="import-file" accept=".csv" style="display:none;" onchange="importReport(this)">
   <div class="spacer"></div>
@@ -473,6 +477,7 @@
 var AUTH_URL = "auth.py";
 var LOAD_URL = "load_data.py";
 var SAVE_URL = "save_data.py";
+var IMPORT_URL = "import_report.py";
 
 /* =================================================================
    状態管理
@@ -601,6 +606,7 @@ function doLogout() {
   document.getElementById("model-select").innerHTML = '<option value="">-- 選択してください --</option>';
   document.getElementById("btn-import").style.display = "none";
   document.getElementById("import-separator").style.display = "none";
+  document.getElementById("import-mode").style.display = "none";
   hideStatus();
   updateChangeUI();
 }
@@ -761,9 +767,11 @@ function loadModelData(model) {
     if (reportImportConfig) {
       document.getElementById("btn-import").style.display = "";
       document.getElementById("import-separator").style.display = "";
+      document.getElementById("import-mode").style.display = "";
     } else {
       document.getElementById("btn-import").style.display = "none";
       document.getElementById("import-separator").style.display = "none";
+      document.getElementById("import-mode").style.display = "none";
     }
 
     renderBoard();
@@ -1173,7 +1181,10 @@ function importReport(input) {
     input.value = "";
     return;
   }
-  if (!currentModel || allLots.length === 0) {
+
+  var mode = document.getElementById("import-mode").value;
+
+  if (mode === "current" && (!currentModel || allLots.length === 0)) {
     showStatus("先に機種を選択してデータを読み込んでください", "error");
     input.value = "";
     return;
@@ -1183,64 +1194,11 @@ function importReport(input) {
   var reader = new FileReader();
   reader.onload = function(e) {
     var text = e.target.result;
-    var lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    if (lines.length < 2) {
-      showStatus("レポートファイルにデータがありません", "error");
-      input.value = "";
-      return;
-    }
 
-    var headers = parseCSVLine(lines[0]);
-    var lotHeader = reportImportConfig.lot_number_header;
-    var orderHeader = reportImportConfig.order_number_header;
-
-    var lotIdx = -1, orderIdx = -1;
-    for (var h = 0; h < headers.length; h++) {
-      if (headers[h].trim() === lotHeader) lotIdx = h;
-      if (headers[h].trim() === orderHeader) orderIdx = h;
-    }
-
-    if (lotIdx < 0 || orderIdx < 0) {
-      showStatus("レポートに必要なヘッダーが見つかりません (" + lotHeader + ", " + orderHeader + ")", "error");
-      input.value = "";
-      return;
-    }
-
-    // レポートからロット番号→注文番号のマッピングを構築
-    var importMap = {};
-    for (var i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
-      var cols = parseCSVLine(lines[i]);
-      if (cols.length > Math.max(lotIdx, orderIdx)) {
-        var lotNum = cols[lotIdx].trim();
-        var orderNum = cols[orderIdx].trim();
-        if (lotNum) {
-          importMap[lotNum] = orderNum;
-        }
-      }
-    }
-
-    // 現在のロットに反映（出荷済みは除外）
-    var applied = 0;
-    var skipped = 0;
-    allLots.forEach(function(lot) {
-      if (lot.shipped) return;
-      if (typeof importMap[lot.lot_number] !== "undefined") {
-        var newOrder = importMap[lot.lot_number];
-        if (lot.order_number !== newOrder) {
-          lot.order_number = newOrder;
-          applied++;
-        }
-      }
-    });
-
-    renderBoard();
-    updateChangeUI();
-
-    if (applied > 0) {
-      showStatus("レポート取込完了: " + applied + " 件の注文番号を反映しました", "success");
+    if (mode === "all") {
+      importReportAll(text);
     } else {
-      showStatus("レポート取込: 反映対象のロットがありませんでした", "info");
+      importReportCurrent(text);
     }
     input.value = "";
   };
@@ -1249,6 +1207,96 @@ function importReport(input) {
     input.value = "";
   };
   reader.readAsText(file, "utf-8");
+}
+
+function importReportCurrent(text) {
+  var lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  if (lines.length < 2) {
+    showStatus("レポートファイルにデータがありません", "error");
+    return;
+  }
+
+  var headers = parseCSVLine(lines[0]);
+  var lotHeader = reportImportConfig.lot_number_header;
+  var orderHeader = reportImportConfig.order_number_header;
+
+  var lotIdx = -1, orderIdx = -1;
+  for (var h = 0; h < headers.length; h++) {
+    if (headers[h].trim() === lotHeader) lotIdx = h;
+    if (headers[h].trim() === orderHeader) orderIdx = h;
+  }
+
+  if (lotIdx < 0 || orderIdx < 0) {
+    showStatus("レポートに必要なヘッダーが見つかりません (" + lotHeader + ", " + orderHeader + ")", "error");
+    return;
+  }
+
+  var importMap = {};
+  for (var i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    var cols = parseCSVLine(lines[i]);
+    if (cols.length > Math.max(lotIdx, orderIdx)) {
+      var lotNum = cols[lotIdx].trim();
+      var orderNum = cols[orderIdx].trim();
+      if (lotNum) {
+        importMap[lotNum] = orderNum;
+      }
+    }
+  }
+
+  var applied = 0;
+  allLots.forEach(function(lot) {
+    if (lot.shipped) return;
+    if (typeof importMap[lot.lot_number] !== "undefined") {
+      var newOrder = importMap[lot.lot_number];
+      if (lot.order_number !== newOrder) {
+        lot.order_number = newOrder;
+        applied++;
+      }
+    }
+  });
+
+  renderBoard();
+  updateChangeUI();
+
+  if (applied > 0) {
+    showStatus("レポート取込完了（現在の機種）: " + applied + " 件の注文番号を反映しました", "success");
+  } else {
+    showStatus("レポート取込: 反映対象のロットがありませんでした", "info");
+  }
+}
+
+function importReportAll(text) {
+  if (!confirm("データソース全体にレポートを反映します。よろしいですか？")) return;
+
+  showLoading();
+  fetch(IMPORT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      username: currentUser.username,
+      report_csv: text
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  })
+  .then(function(data) {
+    hideLoading();
+    if (!data.success) {
+      showStatus("エラー: " + data.error, "error");
+      return;
+    }
+    showStatus("レポート取込完了（全データ）: " + data.message, "success");
+    if (currentModel) {
+      loadModelData(currentModel);
+    }
+  })
+  .catch(function(err) {
+    hideLoading();
+    showStatus("通信エラー: " + err.message, "error");
+  });
 }
 
 function parseCSVLine(line) {
