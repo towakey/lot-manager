@@ -119,6 +119,7 @@ def main():
     process_header         = col_map.get("process", "工程")
     shipped_order_header   = col_map.get("shipped_order_number", "")
     shipped_qty_header     = col_map.get("shipped_quantity", "")
+    input_qty_header       = col_map.get("input_quantity", "")
 
     # 顧客列インデックス（設定されている場合のみ）
     customer_idx = -1
@@ -131,6 +132,7 @@ def main():
     # 出荷時列インデックス（設定されている場合のみ）
     shipped_order_idx = -1
     shipped_qty_idx = -1
+    input_qty_idx = -1
     if shipped_order_header:
         try:
             shipped_order_idx = headers.index(shipped_order_header)
@@ -139,6 +141,11 @@ def main():
     if shipped_qty_header:
         try:
             shipped_qty_idx = headers.index(shipped_qty_header)
+        except ValueError:
+            pass
+    if input_qty_header:
+        try:
+            input_qty_idx = headers.index(input_qty_header)
         except ValueError:
             pass
 
@@ -219,6 +226,13 @@ def main():
         else:
             effective_order = order
             effective_qty = qty
+            if input_qty_idx >= 0 and len(row) > input_qty_idx:
+                input_qty_val = row[input_qty_idx].strip()
+                try:
+                    if int(input_qty_val) > 0:
+                        effective_qty = input_qty_val
+                except (ValueError, TypeError):
+                    pass
 
         if effective_order not in groups:
             groups[effective_order] = []
