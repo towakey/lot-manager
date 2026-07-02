@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ロット管理 — 操作マニュアル</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #d0d7e2;
+      --primary: #2563eb;
+      --primary-h: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,.10);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+      --card-changed: #fef3c7;
+      --group-border: #1e3a5f;
+      --chip: #e2e8f0;
+      --code-bg: #f8fafc;
+      --callout-info-bg: #eff6ff;
+      --callout-info-border: #bfdbfe;
+      --callout-success-bg: #f0fdf4;
+      --callout-success-border: #bbf7d0;
+      --callout-warning-bg: #fffbeb;
+      --callout-warning-border: #fde68a;
+      --callout-danger-bg: #fef2f2;
+      --callout-danger-border: #fecaca;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: space-between;
+    }
+    .title-wrap {
+      min-width: 0;
+    }
+    .title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: .01em;
+    }
+    .subtitle {
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .close-hint {
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--text-muted);
+      font-size: 12px;
+      box-shadow: var(--shadow);
+      white-space: nowrap;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      align-items: center;
+    }
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    .hero p {
+      margin: 0 0 14px;
+      color: var(--text-muted);
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #eef2ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .pill.gray { background: #f8fafc; color: var(--text-muted); border-color: var(--border); }
+    .pill.green { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .pill.orange { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+
+    .toc {
+      position: sticky;
+      top: 74px;
+      z-index: 10;
+      background: rgba(240,244,248,.96);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 14px 16px;
+      margin-bottom: 18px;
+    }
+    .toc-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 14px;
+    }
+    .toc-grid a {
+      display: block;
+      padding: 7px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.02);
+    }
+    .toc-grid a:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+      text-decoration: none;
+    }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .section-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .step-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      flex: 0 0 auto;
+      box-shadow: 0 4px 12px rgba(37,99,235,.25);
+    }
+    .section h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .section-lead {
+      margin: 6px 0 0;
+      color: var(--text-muted);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .card p, .card li {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .card ul, .card ol { margin: 8px 0 0 20px; padding: 0; }
+    .card li + li { margin-top: 6px; }
+
+    .callout {
+      border: 1px solid;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .callout strong { display: inline-block; margin-right: 6px; }
+    .callout.info { background: var(--callout-info-bg); border-color: var(--callout-info-border); }
+    .callout.success { background: var(--callout-success-bg); border-color: var(--callout-success-border); }
+    .callout.warning { background: var(--callout-warning-bg); border-color: var(--callout-warning-border); }
+    .callout.danger { background: var(--callout-danger-bg); border-color: var(--callout-danger-border); }
+
+    .muted {
+      color: var(--text-muted);
+    }
+    .small {
+      font-size: 12px;
+    }
+    .nowrap { white-space: nowrap; }
+
+    .diagram {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow: auto;
+    }
+    .diagram svg {
+      width: 100%;
+      min-width: 560px;
+      height: auto;
+      display: block;
+    }
+
+    .swatches {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .swatch {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .swatch-top {
+      height: 34px;
+    }
+    .swatch-body {
+      padding: 10px;
+      font-size: 12px;
+    }
+    .swatch-body strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .rule-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .rule-row {
+      display: grid;
+      grid-template-columns: 1.3fr .9fr .9fr;
+      gap: 0;
+      border-top: 1px solid var(--border);
+    }
+    .rule-row:first-child { border-top: 0; }
+    .rule-cell {
+      padding: 10px 12px;
+      font-size: 13px;
+      background: #fff;
+    }
+    .rule-cell.label {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .legend-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .legend-bar {
+      width: 16px;
+      height: 40px;
+      border-radius: 4px;
+      flex: 0 0 auto;
+    }
+    .legend-item strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .legend-item span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .flow-step {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      position: relative;
+      min-height: 108px;
+    }
+    .flow-step::after {
+      content: "→";
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--border);
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .flow-step:last-child::after { content: ""; }
+    .flow-step .num {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .flow-step h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .flow-step p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.9em;
+      padding: 0 .45em;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--code-bg);
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,.03);
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-size: 12px;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 8px 0 18px;
+    }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      background: #fff;
+    }
+    .mini-table th, .mini-table td {
+      border-top: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .mini-table th {
+      background: #f8fafc;
+      font-weight: 700;
+    }
+    .mini-table tr:first-child th, .mini-table tr:first-child td { border-top: 0; }
+
+    .mock-row {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .mock-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .mock-card .mock-head {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 10px 12px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .mock-card .mock-head.green { background: var(--success); }
+    .mock-card .mock-head.orange { background: #f59e0b; }
+    .mock-card .mock-head.red { background: var(--danger); }
+    .mock-card .mock-body {
+      padding: 10px;
+      background: #fff;
+    }
+    .mock-lot {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      align-items: center;
+      font-size: 13px;
+    }
+    .mock-lot.changed { background: var(--card-changed); border-left-color: #f59e0b; }
+    .mock-lot.shipped { background: #dbeafe; border-left-color: #7c3aed; }
+    .mock-lot .right { color: var(--text-muted); font-size: 12px; }
+    .mock-empty {
+      text-align: center;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 14px 10px;
+      color: #94a3b8;
+      font-size: 12px;
+      background: #f8fafc;
+    }
+
+    .note-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid, .grid-2, .grid-3, .flow, .legend, .swatches, .toc-grid, .mock-row {
+        grid-template-columns: 1fr;
+      }
+      .flow-step::after { display: none; }
+      .topbar-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .close-hint { align-self: stretch; text-align: center; }
+      .toc { top: 0; }
+    }
+
+    @media print {
+      html { scroll-behavior: auto; }
+      body { background: #fff; }
+      .topbar, .toc, .footer-note { position: static; box-shadow: none; }
+      .topbar, .toc, .close-hint { display: none !important; }
+      .page { padding: 0; max-width: none; }
+      .section, .hero { break-inside: avoid; box-shadow: none; }
+      a { color: #000; text-decoration: none; }
+      .diagram { overflow: visible; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="title-wrap">
+        <h1 class="title">ロット管理 — 操作マニュアル</h1>
+        <div class="subtitle">画面の流れ、色分け、保存ルール、管理者向け取込機能をひと目で確認できます。</div>
+      </div>
+      <div class="close-hint">閉じる/戻る: ブラウザのタブを閉じて元画面へ</div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero" id="top">
+      <div class="hero-grid">
+        <div>
+          <h2>操作の全体像</h2>
+          <p>
+            この画面は、ログイン後に顧客・機種を選び、ロットカードをドラッグ＆ドロップで付け替え、必要に応じて保存・リセット・レポート取込を行うためのマニュアルです。
+            画面の配色は本体アプリと同じトークンを使用しています。
+          </p>
+          <div class="pill-row">
+            <span class="pill">ログイン</span>
+            <span class="pill">顧客絞込</span>
+            <span class="pill">機種選択</span>
+            <span class="pill">ドラッグ＆ドロップ</span>
+            <span class="pill green">保存</span>
+            <span class="pill orange">管理者取込</span>
+            <span class="pill gray">UTF-8 / 外部依存なし</span>
+          </div>
+        </div>
+        <div class="diagram" aria-label="画面イメージ">
+          <svg viewBox="0 0 560 220" role="img" aria-labelledby="heroSvgTitle heroSvgDesc">
+            <title id="heroSvgTitle">ロット管理画面イメージ</title>
+            <desc id="heroSvgDesc">ヘッダー、保存・リセット、機種選択、注文番号グループとロットカードのイメージ。</desc>
+            <rect x="8" y="8" width="544" height="204" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+            <rect x="8" y="8" width="544" height="38" rx="14" fill="#1e3a5f"/>
+            <rect x="8" y="32" width="544" height="14" fill="#1e3a5f"/>
+            <text x="26" y="32" font-size="14" fill="#ffffff" font-weight="700">ロット管理</text>
+            <rect x="176" y="16" width="74" height="22" rx="6" fill="#16a34a"/>
+            <text x="187" y="31" font-size="11" fill="#ffffff">保存</text>
+            <rect x="256" y="16" width="74" height="22" rx="6" fill="#f59e0b"/>
+            <text x="264" y="31" font-size="11" fill="#ffffff">リセット</text>
+            <rect x="336" y="16" width="94" height="22" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+            <text x="345" y="31" font-size="11" fill="#1d4ed8">ファイル取込</text>
+            <rect x="440" y="16" width="88" height="22" rx="6" fill="#ffffff" stroke="#d0d7e2"/>
+            <text x="450" y="31" font-size="11" fill="#64748b">マニュアル</text>
+
+            <rect x="20" y="62" width="520" height="26" rx="6" fill="#f8fafc" stroke="#d0d7e2"/>
+            <text x="34" y="79" font-size="12" fill="#64748b">顧客:</text>
+            <text x="92" y="79" font-size="12" fill="#1e293b">田中商事</text>
+            <text x="200" y="79" font-size="12" fill="#64748b">機種:</text>
+            <text x="258" y="79" font-size="12" fill="#1e293b">AAA001</text>
+            <text x="370" y="79" font-size="12" fill="#64748b">必要個数 70 / 個数 68</text>
+
+            <rect x="20" y="102" width="235" height="104" rx="10" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+            <rect x="20" y="102" width="235" height="30" rx="10" fill="#16a34a"/>
+            <text x="32" y="121" font-size="12" fill="#ffffff" font-weight="700">注文番号 AAA</text>
+            <text x="176" y="121" font-size="12" fill="#ffffff">必要 70 / 個数 68</text>
+            <rect x="30" y="142" width="215" height="18" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+            <text x="38" y="155" font-size="11" fill="#1e293b">ABC001  30  A100</text>
+            <rect x="30" y="166" width="215" height="18" rx="4" fill="#dbeafe" stroke="#7c3aed"/>
+            <text x="38" y="179" font-size="11" fill="#1e293b">ABC168  25  A002</text>
+
+            <rect x="285" y="102" width="235" height="104" rx="10" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+            <rect x="285" y="102" width="235" height="30" rx="10" fill="#f59e0b"/>
+            <text x="297" y="121" font-size="12" fill="#ffffff" font-weight="700">注文番号 BBB</text>
+            <text x="441" y="121" font-size="12" fill="#ffffff">必要 50 / 個数 68</text>
+            <rect x="295" y="142" width="215" height="18" rx="4" fill="#ffffff" stroke="#d0d7e2"/>
+            <text x="303" y="155" font-size="11" fill="#1e293b">ABC002  18  A100</text>
+            <rect x="295" y="166" width="215" height="18" rx="4" fill="#fff" stroke="#d0d7e2" stroke-dasharray="4 3"/>
+            <text x="303" y="179" font-size="11" fill="#1e293b">ABC101  25  A024</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <nav class="toc" aria-label="目次">
+      <div class="toc-title">目次</div>
+      <div class="toc-grid">
+        <a href="#login">1. ログイン</a>
+        <a href="#customer-filter">2. 顧客で絞込</a>
+        <a href="#model-select">3. 機種選択</a>
+        <a href="#card-dnd">4. カードのドラッグ＆ドロップ</a>
+        <a href="#group-sort">5. グループの並び替え</a>
+        <a href="#quantity-color">6. 個数の自動計算とグループ色</a>
+        <a href="#quantity-rule">7. 個数計算のルール</a>
+        <a href="#save-reset">8. 保存</a>
+        <a href="#import">9. ファイル取込（admin専用）</a>
+        <a href="#settings">10. 設定ファイル setting.json</a>
+      </div>
+    </nav>
+
+    <section class="section" id="login">
+      <div class="section-head">
+        <div class="step-badge">1</div>
+        <div>
+          <h2>ログイン</h2>
+          <p class="section-lead">username / password でログインします。認証は CSV エディタ側の設定に準拠します。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>入力するもの</h3>
+          <ul>
+            <li><strong>ユーザー名</strong>: 画面のログイン欄に入力します。</li>
+            <li><strong>パスワード</strong>: 同じくログイン欄に入力します。</li>
+            <li>認証に失敗すると、エラーメッセージが表示されます。</li>
+          </ul>
+        </div>
+        <div class="callout info">
+          <strong>確認ポイント</strong>
+          ログイン後はヘッダーが表示され、顧客・機種の選択、保存、リセット、管理者向けのファイル取込が使えるようになります。
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top:14px;">
+        <svg viewBox="0 0 920 170" role="img" aria-label="ログインの流れ">
+          <rect x="8" y="20" width="200" height="124" rx="12" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="24" y="50" font-size="14" fill="#1e293b" font-weight="700">1. ユーザー名</text>
+          <rect x="24" y="64" width="168" height="26" rx="6" fill="#f8fafc" stroke="#d0d7e2"/>
+          <text x="34" y="81" font-size="12" fill="#64748b">admin</text>
+          <text x="24" y="114" font-size="14" fill="#1e293b" font-weight="700">2. パスワード</text>
+          <rect x="24" y="128" width="168" height="26" rx="6" fill="#f8fafc" stroke="#d0d7e2"/>
+          <text x="34" y="145" font-size="12" fill="#64748b">********</text>
+
+          <rect x="254" y="52" width="170" height="70" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+          <text x="272" y="82" font-size="14" fill="#1d4ed8" font-weight="700">ログイン</text>
+          <text x="272" y="102" font-size="12" fill="#1e293b">認証成功で画面切替</text>
+
+          <rect x="470" y="20" width="200" height="124" rx="12" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="486" y="50" font-size="14" fill="#1e293b" font-weight="700">ログイン後の表示</text>
+          <rect x="486" y="64" width="168" height="18" rx="4" fill="#f8fafc" stroke="#d0d7e2"/>
+          <rect x="486" y="90" width="168" height="18" rx="4" fill="#f8fafc" stroke="#d0d7e2"/>
+          <rect x="486" y="116" width="168" height="18" rx="4" fill="#f8fafc" stroke="#d0d7e2"/>
+
+          <rect x="724" y="38" width="170" height="92" rx="12" fill="#f0fdf4" stroke="#bbf7d0"/>
+          <text x="742" y="68" font-size="14" fill="#166534" font-weight="700">使える機能</text>
+          <text x="742" y="92" font-size="12" fill="#1e293b">顧客 / 機種選択</text>
+          <text x="742" y="112" font-size="12" fill="#1e293b">保存 / リセット / 取込</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section" id="customer-filter">
+      <div class="section-head">
+        <div class="step-badge">2</div>
+        <div>
+          <h2>顧客で絞込</h2>
+          <p class="section-lead">顧客プルダウンで機種一覧を絞り込みます。未選択なら全機種が対象です。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>動作</h3>
+          <ol>
+            <li>顧客を選ぶと、その顧客に紐づく機種だけが機種プルダウンに表示されます。</li>
+            <li>顧客を空欄に戻すと、全顧客の機種一覧に戻ります。</li>
+          </ol>
+        </div>
+        <div class="callout warning">
+          <strong>注意</strong>
+          顧客や機種を切り替えると、未保存の変更がある場合は確認ダイアログが表示されます。
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="model-select">
+      <div class="section-head">
+        <div class="step-badge">3</div>
+        <div>
+          <h2>機種選択</h2>
+          <p class="section-lead">機種を選ぶとデータが読み込まれ、注文番号ごとのグループにロットカードが並びます。</p>
+        </div>
+      </div>
+
+      <div class="flow" style="margin-bottom:14px;">
+        <div class="flow-step">
+          <div class="num">1</div>
+          <h3>機種を選択</h3>
+          <p>プルダウンから対象機種を選びます。</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">2</div>
+          <h3>サーバーから読込</h3>
+          <p>load_data.py が CSV を読み込み、グループ化して返します。</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">3</div>
+          <h3>注文番号ごとに表示</h3>
+          <p>注文番号ごとにカードがまとまります。</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">4</div>
+          <h3>数量と色を確認</h3>
+          <p>必要個数と現在の個数、状態色を確認します。</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <strong>表示のポイント</strong>
+        グループ見出しには <code>必要個数 X / 個数 Y</code> が表示されます。Y は後述のルールで計算された合計です。
+      </div>
+    </section>
+
+    <section class="section" id="card-dnd">
+      <div class="section-head">
+        <div class="step-badge">4</div>
+        <div>
+          <h2>カードのドラッグ＆ドロップ</h2>
+          <p class="section-lead">ロットカードを別の注文番号グループへ移動すると、注文番号が付け替わります。枠外に落とすと「未設定」になります。</p>
+        </div>
+      </div>
+
+      <div class="mock-row">
+        <div class="mock-card">
+          <div class="mock-head">
+            <span>注文番号 AAA</span>
+            <span>ロット 3 件</span>
+          </div>
+          <div class="mock-body">
+            <div class="mock-lot">
+              <span>ABC001</span><span>30</span><span class="right">A100</span>
+            </div>
+            <div class="mock-lot changed">
+              <span>ABC051</span><span>20</span><span class="right">A038</span>
+            </div>
+            <div class="mock-lot shipped">
+              <span>ABC168</span><span>25</span><span class="right">A002</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>見た目の意味</h3>
+          <ul>
+            <li><strong>変更済み</strong>のカードは黄色でハイライトされます。</li>
+            <li><strong>出荷済み</strong>のカードは青系背景＋紫左ボーダーです。</li>
+            <li>出荷済みカードはドラッグ不可で、確定扱いです。</li>
+            <li>未設定へ落としたカードは、グループ外に移動します。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top:14px;">
+        <svg viewBox="0 0 940 220" role="img" aria-label="カード移動のイメージ">
+          <rect x="20" y="34" width="260" height="150" rx="12" fill="#ffffff" stroke="#1e3a5f" stroke-width="2"/>
+          <rect x="20" y="34" width="260" height="34" rx="12" fill="#1e3a5f"/>
+          <text x="35" y="56" font-size="13" fill="#ffffff" font-weight="700">注文番号 AAA</text>
+          <rect x="32" y="80" width="236" height="24" rx="5" fill="#fef3c7" stroke="#f59e0b"/>
+          <text x="42" y="96" font-size="12" fill="#1e293b">ABC051  20  A038</text>
+          <rect x="32" y="112" width="236" height="24" rx="5" fill="#dbeafe" stroke="#7c3aed"/>
+          <text x="42" y="128" font-size="12" fill="#1e293b">ABC168  25  A002</text>
+          <rect x="32" y="144" width="236" height="24" rx="5" fill="#ffffff" stroke="#d0d7e2" stroke-dasharray="4 3"/>
+          <text x="42" y="160" font-size="12" fill="#1e293b">未設定へドロップ</text>
+
+          <path d="M316 110 L420 110" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+          <polygon points="420,110 404,102 404,118" fill="#2563eb"/>
+          <text x="336" y="96" font-size="12" fill="#2563eb" font-weight="700">ドラッグ</text>
+
+          <rect x="470" y="34" width="260" height="150" rx="12" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <rect x="470" y="34" width="260" height="34" rx="12" fill="#f59e0b"/>
+          <text x="485" y="56" font-size="13" fill="#ffffff" font-weight="700">注文番号 BBB</text>
+          <rect x="482" y="80" width="236" height="24" rx="5" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="492" y="96" font-size="12" fill="#1e293b">ABC002  18  A100</text>
+          <rect x="482" y="112" width="236" height="24" rx="5" fill="#fff" stroke="#d0d7e2"/>
+          <text x="492" y="128" font-size="12" fill="#1e293b">ABC101  25  A024</text>
+          <rect x="482" y="144" width="236" height="24" rx="5" fill="#fef3c7" stroke="#f59e0b"/>
+          <text x="492" y="160" font-size="12" fill="#1e293b">移動後は変更色で表示</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section" id="group-sort">
+      <div class="section-head">
+        <div class="step-badge">5</div>
+        <div>
+          <h2>グループの並び替え</h2>
+          <p class="section-lead">グループヘッダーをドラッグして並び替えできます。ドラッグ中は画面端で自動スクロールします。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>操作方法</h3>
+          <ol>
+            <li>グループのヘッダー部分をつかみます。</li>
+            <li>別のグループの上へドロップすると、並び順が入れ替わります。</li>
+            <li>画面端に近づくと、自動でスクロールして続けて操作できます。</li>
+          </ol>
+        </div>
+        <div class="callout info">
+          <strong>補足</strong>
+          並び順は表示上の順序です。カードの移動とは別の操作として扱われます。
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="quantity-color">
+      <div class="section-head">
+        <div class="step-badge">6</div>
+        <div>
+          <h2>個数の自動計算とグループ色</h2>
+          <p class="section-lead">グループ合計と必要個数を比較し、グループ枠色で状態を見分けます。</p>
+        </div>
+      </div>
+
+      <div class="rule-box">
+        <div class="rule-row">
+          <div class="rule-cell label">状態</div>
+          <div class="rule-cell label">枠・見出し色</div>
+          <div class="rule-cell label">意味</div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-cell">一致</div>
+          <div class="rule-cell">緑</div>
+          <div class="rule-cell">必要個数と個数が一致</div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-cell">アンダー</div>
+          <div class="rule-cell">黄</div>
+          <div class="rule-cell">必要個数より少ない</div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-cell">オーバー</div>
+          <div class="rule-cell">赤</div>
+          <div class="rule-cell">必要個数より多い</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;" class="legend" aria-label="色見本">
+        <div class="legend-item">
+          <div class="legend-bar" style="background:#16a34a;"></div>
+          <div><strong>一致</strong><span>必要個数と合計が同じ</span></div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-bar" style="background:#f59e0b;"></div>
+          <div><strong>アンダー</strong><span>不足している状態</span></div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-bar" style="background:#dc2626;"></div>
+          <div><strong>オーバー</strong><span>過剰になっている状態</span></div>
+        </div>
+      </div>
+
+      <div class="swatches" style="margin-top:14px;">
+        <div class="swatch">
+          <div class="swatch-top" style="background:#16a34a;"></div>
+          <div class="swatch-body">
+            <strong>緑</strong>
+            グループが必要数ぴったり
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-top" style="background:#f59e0b;"></div>
+          <div class="swatch-body">
+            <strong>黄</strong>
+            不足しているグループ
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-top" style="background:#dc2626;"></div>
+          <div class="swatch-body">
+            <strong>赤</strong>
+            多すぎるグループ
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-top" style="background:#dbeafe; border-bottom:1px solid #d0d7e2;"></div>
+          <div class="swatch-body">
+            <strong>青系</strong>
+            出荷済みロットの背景
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="quantity-rule">
+      <div class="section-head">
+        <div class="step-badge">7</div>
+        <div>
+          <h2>個数計算のルール</h2>
+          <p class="section-lead">グループ合計に使う値は、出荷状況と製品投入時個数の有無で決まります。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>判定順</h3>
+          <ol>
+            <li><strong>出荷済み</strong>（出荷時個数 &gt; 0）なら <strong>出荷時個数</strong> を使います。</li>
+            <li><strong>未出荷</strong> かつ <strong>製品投入時個数</strong> が 0 より大きいなら、その値を使います。</li>
+            <li>それ以外は、通常の <strong>個数</strong> を使います。</li>
+          </ol>
+        </div>
+        <div class="callout success">
+          <strong>重要</strong>
+          <span class="nowrap">出荷済みロットは確定扱い</span>で、青系背景＋紫左ボーダーで表示されます。ドラッグ変更の対象にはなりません。
+        </div>
+      </div>
+
+      <div style="margin-top:14px;" class="table-wrap">
+        <table class="mini-table" aria-label="個数の計算例">
+          <tr>
+            <th>状態</th>
+            <th>使用する値</th>
+            <th>表示イメージ</th>
+          </tr>
+          <tr>
+            <td>出荷済み</td>
+            <td>出荷時個数</td>
+            <td>例: <code>25</code></td>
+          </tr>
+          <tr>
+            <td>未出荷、製品投入時個数が 12</td>
+            <td>製品投入時個数</td>
+            <td>例: <code>12</code></td>
+          </tr>
+          <tr>
+            <td>未出荷、製品投入時個数が 0 / 空</td>
+            <td>個数</td>
+            <td>例: <code>20</code></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="diagram" style="margin-top:14px;">
+        <svg viewBox="0 0 1000 250" role="img" aria-label="個数計算のルール図">
+          <rect x="20" y="38" width="260" height="170" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="40" y="66" font-size="16" fill="#1e293b" font-weight="700">判定フロー</text>
+          <rect x="40" y="84" width="220" height="30" rx="8" fill="#dbeafe" stroke="#7c3aed"/>
+          <text x="54" y="104" font-size="12" fill="#1e293b">出荷時個数 &gt; 0 ?</text>
+          <rect x="40" y="128" width="220" height="30" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+          <text x="54" y="148" font-size="12" fill="#1e293b">はい → 出荷時個数</text>
+          <rect x="40" y="172" width="220" height="30" rx="8" fill="#fffbeb" stroke="#fde68a"/>
+          <text x="54" y="192" font-size="12" fill="#1e293b">いいえ → 次へ</text>
+
+          <rect x="330" y="50" width="190" height="150" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="350" y="78" font-size="14" fill="#1e293b" font-weight="700">未出荷</text>
+          <text x="350" y="102" font-size="12" fill="#64748b">製品投入時個数を確認</text>
+          <rect x="350" y="116" width="150" height="24" rx="6" fill="#f8fafc" stroke="#d0d7e2"/>
+          <text x="362" y="132" font-size="12" fill="#1e293b">製品投入時個数 = 18</text>
+          <rect x="350" y="148" width="150" height="24" rx="6" fill="#f8fafc" stroke="#d0d7e2"/>
+          <text x="362" y="164" font-size="12" fill="#1e293b">製品投入時個数 = 0</text>
+          <text x="350" y="192" font-size="12" fill="#1e293b">0 より大きい → その値</text>
+
+          <rect x="580" y="38" width="390" height="170" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="600" y="66" font-size="16" fill="#1e293b" font-weight="700">ロット表示の見え方</text>
+          <rect x="600" y="86" width="330" height="24" rx="5" fill="#dbeafe" stroke="#7c3aed"/>
+          <text x="612" y="102" font-size="12" fill="#1e293b">出荷済みロット：青系背景 + 紫左ボーダー</text>
+          <rect x="600" y="120" width="330" height="24" rx="5" fill="#fef3c7" stroke="#f59e0b"/>
+          <text x="612" y="136" font-size="12" fill="#1e293b">変更ロット：黄色でハイライト</text>
+          <rect x="600" y="154" width="330" height="24" rx="5" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="612" y="170" font-size="12" fill="#1e293b">通常ロット：白背景 + 青左ボーダー</text>
+          <text x="600" y="198" font-size="12" fill="#64748b">グループ合計は、このルールで決まる各ロットの個数を合算します。</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section" id="save-reset">
+      <div class="section-head">
+        <div class="step-badge">8</div>
+        <div>
+          <h2>保存</h2>
+          <p class="section-lead">保存は変更のあったロット行のみを書き戻します。バックアップも作成されます。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>保存</h3>
+          <ul>
+            <li>「保存」ボタンで、変更分だけ CSV に反映します。</li>
+            <li>保存時には確認ダイアログが出ます。</li>
+            <li>保存後、変更状態は解除されます。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>リセット</h3>
+          <ul>
+            <li>「リセット」で、画面上の変更を破棄します。</li>
+            <li>保存前に元の状態へ戻したいときに使います。</li>
+            <li>リセット後も、再度ドラッグでやり直せます。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="import">
+      <div class="section-head">
+        <div class="step-badge">9</div>
+        <div>
+          <h2>ファイル取込（admin専用）</h2>
+          <p class="section-lead">admin ログイン時のみ表示されます。CSV レポートからロット番号→注文番号の反映ができます。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>モード 1: 現在の機種</h3>
+          <ul>
+            <li>画面上の現在の機種データだけに反映します。</li>
+            <li>保存前に反映内容を確認できます。</li>
+            <li>反映後は、保存操作で CSV に書き戻します。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>モード 2: 全データ</h3>
+          <ul>
+            <li>データソース CSV 全体をサーバー側で直接更新します。</li>
+            <li>実行前に確認ダイアログが表示されます。</li>
+            <li>処理後、必要に応じて現在表示中の機種を再読み込みします。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="diagram" style="margin-top:14px;">
+        <svg viewBox="0 0 960 210" role="img" aria-label="取込モードの違い">
+          <rect x="20" y="36" width="420" height="138" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="40" y="66" font-size="16" fill="#1e293b" font-weight="700">現在の機種</text>
+          <rect x="40" y="84" width="120" height="26" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+          <text x="53" y="101" font-size="12" fill="#1d4ed8">レポートCSV</text>
+          <rect x="188" y="84" width="94" height="26" rx="6" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="203" y="101" font-size="12" fill="#1e293b">画面上</text>
+          <rect x="310" y="84" width="110" height="26" rx="6" fill="#f0fdf4" stroke="#bbf7d0"/>
+          <text x="323" y="101" font-size="12" fill="#166534">保存前確認</text>
+          <text x="40" y="136" font-size="12" fill="#64748b">ロット番号に一致した注文番号だけを、現在表示中の機種へ反映します。</text>
+
+          <rect x="500" y="36" width="440" height="138" rx="14" fill="#ffffff" stroke="#d0d7e2"/>
+          <text x="520" y="66" font-size="16" fill="#1e293b" font-weight="700">全データ</text>
+          <rect x="520" y="84" width="120" height="26" rx="6" fill="#eff6ff" stroke="#bfdbfe"/>
+          <text x="533" y="101" font-size="12" fill="#1d4ed8">レポートCSV</text>
+          <rect x="668" y="84" width="120" height="26" rx="6" fill="#fef2f2" stroke="#fecaca"/>
+          <text x="682" y="101" font-size="12" fill="#dc2626">確認ダイアログ</text>
+          <rect x="816" y="84" width="104" height="26" rx="6" fill="#f0fdf4" stroke="#bbf7d0"/>
+          <text x="828" y="101" font-size="12" fill="#166534">サーバー更新</text>
+          <text x="520" y="136" font-size="12" fill="#64748b">データソース CSV 全体を更新するため、管理者が内容を確認してから実行します。</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="section" id="settings">
+      <div class="section-head">
+        <div class="step-badge">10</div>
+        <div>
+          <h2>設定ファイル setting.json</h2>
+          <p class="section-lead">管理者向けの補足です。列名や必要数ファイル、レポート取込のマッピングを設定できます。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>主な設定項目</h3>
+          <ul>
+            <li><code>column_mapping</code>: 顧客、機種、注文番号、個数、出荷時個数などのヘッダー名。</li>
+            <li><code>required_quantity_file</code>: 必要数を管理する別 CSV の設定。</li>
+            <li><code>report_import</code>: ロット番号・注文番号の列マッピング。</li>
+            <li>CSV の列名が変わっても、設定側で追従できます。</li>
+          </ul>
+        </div>
+        <div class="callout info">
+          <strong>補足</strong>
+          画面の文言と CSV のヘッダーを一致させると、運用時に分かりやすくなります。列を追加する場合も、設定ファイルで対応可能です。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="step-badge">補足</div>
+        <div>
+          <h2>よくある見え方のまとめ</h2>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>通常ロット</h3>
+          <p>白背景、青左ボーダー。未出荷の標準表示です。</p>
+        </div>
+        <div class="card">
+          <h3>変更ロット</h3>
+          <p>黄色背景。保存前の変更箇所がすぐ分かります。</p>
+        </div>
+        <div class="card">
+          <h3>出荷済みロット</h3>
+          <p>青系背景、紫左ボーダー。ドラッグ不可です。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">
+      本マニュアルは lot-manager の画面構成に合わせた静的 HTML です。外部 CDN は使用していません。
+    </div>
+  </main>
+</body>
+</html>
