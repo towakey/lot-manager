@@ -359,6 +359,14 @@
       cursor: grabbing;
       box-shadow: 0 4px 16px rgba(0,0,0,.25);
     }
+    .lot-card.drag-ghost {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      opacity: 1;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    }
     .lot-card.changed {
       background: var(--card-changed);
       border-left-color: #f59e0b;
@@ -1023,6 +1031,16 @@ function createCardElement(lot) {
       draggedLotNumber = lot.lot_number;
       e.dataTransfer.setData("text/plain", lot.lot_number);
       e.dataTransfer.effectAllowed = "move";
+      // 不透明なドラッグイメージを生成（ブラウザ既定の半透明ゴーストを回避）
+      if (e.dataTransfer.setDragImage) {
+        var rect = card.getBoundingClientRect();
+        var ghost = card.cloneNode(true);
+        ghost.classList.add("drag-ghost");
+        ghost.style.width = rect.width + "px";
+        document.body.appendChild(ghost);
+        card._dragGhost = ghost;
+        e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+      }
       card.classList.add("dragging");
       document.getElementById("board").classList.add("drag-active");
     });
@@ -1034,6 +1052,10 @@ function createCardElement(lot) {
     card.addEventListener("dragend", function() {
       card.classList.remove("dragging");
       document.getElementById("board").classList.remove("drag-active");
+      if (card._dragGhost) {
+        document.body.removeChild(card._dragGhost);
+        card._dragGhost = null;
+      }
       removeAllDragOver();
       stopAutoScroll();
       draggedLotNumber = null;
