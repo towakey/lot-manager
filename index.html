@@ -503,6 +503,7 @@ var draggedLotNumber = null;
 var autoScrollTimer = null;
 var draggedGroupOrder = null;
 var reportImportConfig = null;
+var groupOrder = [];
 
 /* =================================================================
    Polyfill
@@ -772,6 +773,16 @@ function loadModelData(model) {
       });
     });
 
+    // グループ順序の初期化（並び替え後も保持）
+    var orderSet = {};
+    allLots.forEach(function(lot){ orderSet[lot.order_number] = true; });
+    groupOrder = Object.keys(orderSet).sort(function(a, b) {
+      if (a === "" && b !== "") return 1;
+      if (a !== "" && b === "") return -1;
+      return a < b ? -1 : (a > b ? 1 : 0);
+    });
+    if (groupOrder.indexOf("") === -1) groupOrder.push("");
+
     // レポート取込設定（admin のみ）
     reportImportConfig = data.report_import || null;
     if (reportImportConfig) {
@@ -803,7 +814,8 @@ function renderBoard() {
   board.innerHTML = "";
 
   var groups = {};
-  var groupOrder = [];
+  // グループ順序は並び替え操作で維持される groupOrder を使用
+  groupOrder.forEach(function(order) { groups[order] = []; });
   allLots.forEach(function(lot) {
     var order = lot.order_number;
     if (!groups[order]) {
@@ -813,19 +825,13 @@ function renderBoard() {
     groups[order].push(lot);
   });
 
-  groupOrder.sort(function(a, b) {
-    if (a === "" && b !== "") return 1;
-    if (a !== "" && b === "") return -1;
-    return a < b ? -1 : (a > b ? 1 : 0);
-  });
-
   if (groupOrder.indexOf("") === -1) {
     groupOrder.push("");
     groups[""] = [];
   }
 
   groupOrder.forEach(function(orderNum) {
-    var lots = groups[orderNum];
+    var lots = groups[orderNum] || [];
     var groupEl = createGroupElement(orderNum, lots);
     board.appendChild(groupEl);
   });
@@ -1379,6 +1385,14 @@ function swapGroups(fromOrder, toOrder) {
     board.insertBefore(fromEl, toNext);
     board.insertBefore(toEl, fromNext);
   }
+
+  // DOMの並び順を groupOrder に反映
+  var newOrder = [];
+  var children = board.querySelectorAll(".order-group");
+  for (var j = 0; j < children.length; j++) {
+    newOrder.push(children[j].dataset.order);
+  }
+  groupOrder = newOrder;
 }
 
 function removeAllGroupDragOver() {
