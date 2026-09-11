@@ -44,6 +44,16 @@ def send_json(obj):
 def normalize_encoding(enc):
     return ENCODING_MAP.get(enc.lower().replace(" ", ""), enc)
 
+def get_report_column_mapping(setting, customer):
+    cfg = setting.get("report_import", {})
+    customers = cfg.get("customers", {})
+    if customer and customer in customers:
+        return customers[customer].get("column_mapping", {})
+    default_cfg = cfg.get("default")
+    if isinstance(default_cfg, dict) and default_cfg.get("column_mapping"):
+        return default_cfg["column_mapping"]
+    return cfg.get("column_mapping", {})
+
 def write_log(username, action, detail=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     file_exists = os.path.exists(LOG_PATH)
@@ -313,9 +323,8 @@ def main():
     if req_file_cfg:
         req_qty_label = req_file_cfg.get("column_mapping", {}).get("required_quantity", "")
 
-    # レポート取込設定
-    report_import_cfg = setting.get("report_import", {})
-    report_import_col = report_import_cfg.get("column_mapping", {})
+    # レポート取込設定（顧客別。未設定顧客は default、旧形式はそのまま参照）
+    report_import_col = get_report_column_mapping(setting, customer)
 
     resp = {
         "success": True,

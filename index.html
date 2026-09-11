@@ -752,6 +752,9 @@ function loadModelData(model) {
   showLoading("データ読み込み中...");
   var url = LOAD_URL + "?username=" + encodeURIComponent(currentUser.username)
             + "&model=" + encodeURIComponent(model);
+  if (currentCustomer) {
+    url += "&customer=" + encodeURIComponent(currentCustomer);
+  }
   fetch(url)
   .then(function(res) { return res.json(); })
   .then(function(data) {
@@ -1341,6 +1344,7 @@ function importReportAll(text) {
     headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify({
       username: currentUser.username,
+      customer: currentCustomer,
       report_csv: text
     })
   })
