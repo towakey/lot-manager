@@ -383,6 +383,19 @@
     .lot-card .card-lot { flex: 1; font-size: 13px; font-weight: 600; font-family: monospace; }
     .lot-card .card-qty { width: 50px; text-align: right; font-size: 13px; font-weight: 600; }
     .lot-card .card-process { width: 60px; text-align: right; font-size: 12px; color: var(--text-muted); font-family: monospace; }
+    .lot-card .card-remove {
+      width: 20px;
+      margin-left: 4px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1;
+      text-align: center;
+      cursor: pointer;
+    }
+    .lot-card .card-remove:hover { color: var(--danger); }
 
     /* ============ ローディング ============ */
     #loading {
@@ -1025,6 +1038,29 @@ function createCardElement(lot) {
   card.appendChild(lotSpan);
   card.appendChild(qtySpan);
   card.appendChild(procSpan);
+
+  if (!lot.shipped) {
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "card-remove";
+    removeBtn.textContent = "✕";
+    removeBtn.title = (columnLabels.order_number || "注文番号") + "を削除";
+    removeBtn.addEventListener("mousedown", function(e) {
+      e.stopPropagation();
+      card.draggable = false;
+      var restore = function() {
+        card.draggable = true;
+        document.removeEventListener("mouseup", restore);
+      };
+      document.addEventListener("mouseup", restore);
+    });
+    removeBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      card.draggable = true;
+      moveCard(lot.lot_number, "");
+    });
+    card.appendChild(removeBtn);
+  }
 
   if (lot.shipped) {
     card.title = "出荷済み ("
