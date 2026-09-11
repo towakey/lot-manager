@@ -27,9 +27,25 @@
     }
   },
   "report_import": {
-    "column_mapping": {
-      "lot_number": "LOT番号",
-      "order_number": "注文番号"
+    "default": {
+      "column_mapping": {
+        "lot_number": "LOT番号",
+        "order_number": "注文番号"
+      }
+    },
+    "customers": {
+      "田中商事": {
+        "column_mapping": {
+          "lot_number": "LOT番号",
+          "order_number": "注文番号"
+        }
+      },
+      "山田工業": {
+        "column_mapping": {
+          "lot_number": "LOT番号",
+          "order_number": "注文番号"
+        }
+      }
     }
   },
   "users": [

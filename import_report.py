@@ -4,6 +4,7 @@
 import_report.py - レポート取込CGI（データソース全体反映）
 POST: {
   "username": "admin",
+  "customer": "田中商事",
   "report_csv": "LOT番号,注文番号\nABC001,CCC\n..."
 }
 レポートCSVのロット番号→注文番号マッピングをデータソース全体に反映する。
@@ -53,6 +54,16 @@ def normalize_newline(nl):
     key = nl.lower() if nl.lower() in NEWLINE_MAP else nl
     return NEWLINE_MAP.get(key, "\r\n")
 
+def get_report_column_mapping(setting, customer):
+    cfg = setting.get("report_import", {})
+    customers = cfg.get("customers", {})
+    if customer and customer in customers:
+        return customers[customer].get("column_mapping", {})
+    default_cfg = cfg.get("default")
+    if isinstance(default_cfg, dict) and default_cfg.get("column_mapping"):
+        return default_cfg["column_mapping"]
+    return cfg.get("column_mapping", {})
+
 def write_log(username, action, detail=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     file_exists = os.path.exists(LOG_PATH)
@@ -95,6 +106,7 @@ def main():
         return
 
     username   = data.get("username", "").strip()
+    customer   = data.get("customer", "").strip()
     report_csv = data.get("report_csv", "")
 
     if not username:
@@ -118,9 +130,8 @@ def main():
         send_json({"success": False, "error": "レポートデータが空です"})
         return
 
-    # レポート取込設定
-    report_import_cfg = setting.get("report_import", {})
-    report_import_col = report_import_cfg.get("column_mapping", {})
+    # レポート取込設定（顧客別。未設定顧客は default、旧形式はそのまま参照）
+    report_import_col = get_report_column_mapping(setting, customer)
     report_lot_header   = report_import_col.get("lot_number", "")
     report_order_header = report_import_col.get("order_number", "")
 
@@ -180,6 +191,7 @@ def main():
     lot_header           = col_map.get("lot_number", "LOT番号")
     order_header         = col_map.get("order_number", "注文番号")
     shipped_qty_header   = col_map.get("shipped_quantity", "")
+    customer_header      = col_map.get("customer", "")
 
     try:
         csv_headers = []
@@ -202,6 +214,17 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
+    customer_idx = -1
+    if customer_header:
+        try:
+            customer_idx = csv_headers.index(customer_header)
+        except ValueError:
+            pass
+
+    if customer and customer_idx < 0:
+        send_json({"success": False, "error": "データソースに顧客列 '{}' がありません".format(customer_header)})
+        return
+
     shipped_qty_idx = -1
     if shipped_qty_header:
         try:
@@ -213,6 +236,10 @@ def main():
     updated_count = 0
     for row in rows:
         if len(row) <= max(lot_idx, order_idx):
+            continue
+
+        # 顧客指定時はその顧客の行のみ対象
+        if customer and len(row) > customer_idx and row[customer_idx].strip() != customer:
             continue
 
         # 出荷済み判定
@@ -252,7 +279,8 @@ def main():
         return
 
     write_log(username, "レポート取込(全体)",
-              "レポート件数={} 更新行数={}".format(len(import_map), updated_count))
+              "顧客={} レポート件数={} 更新行数={}".format(
+                  customer or "(全て)", len(import_map), updated_count))
 
     send_json({
         "success":      True,
