@@ -621,7 +621,8 @@
         <a href="#quantity-rule">7. 個数計算のルール</a>
         <a href="#save-reset">8. 保存</a>
         <a href="#import">9. ファイル取込（admin専用）</a>
-        <a href="#settings">10. 設定ファイル setting.json</a>
+        <a href="#history">10. 作業履歴</a>
+        <a href="#settings">11. 設定ファイル setting.json</a>
       </div>
     </nav>
 
@@ -1009,6 +1010,7 @@
             <li>「保存」ボタンで、変更分だけ CSV に反映します。</li>
             <li>保存時には確認ダイアログが出ます。</li>
             <li>保存後、変更状態は解除されます。</li>
+            <li>変更したユーザー、対象ロット、変更前後の注文番号が作業履歴に記録されます。</li>
           </ul>
         </div>
         <div class="card">
@@ -1046,6 +1048,7 @@
             <li>データソース CSV 全体をサーバー側で直接更新します。</li>
             <li>実行前に確認ダイアログが表示されます。</li>
             <li>処理後、必要に応じて現在表示中の機種を再読み込みします。</li>
+            <li>変更された各ロットの変更前後が作業履歴に記録されます。</li>
           </ul>
         </div>
       </div>
@@ -1075,12 +1078,43 @@
       </div>
     </section>
 
-    <section class="section" id="settings">
+    <section class="section" id="history">
       <div class="section-head">
         <div class="step-badge">10</div>
         <div>
+          <h2>作業履歴</h2>
+          <p class="section-lead">閲覧権限が設定されたユーザーだけが、ロットの変更履歴を確認できます。</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>確認できる内容</h3>
+          <ul>
+            <li>変更日時と操作したユーザー。</li>
+            <li>画面保存またはレポート取込のどちらで変更したか。</li>
+            <li>顧客、機種、LOT番号。</li>
+            <li>注文番号などの変更項目と、変更前 → 変更後の値。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>操作方法</h3>
+          <ul>
+            <li>ヘッダーの「作業履歴」を押すと別画面で開きます。</li>
+            <li>ユーザー選択で、特定ユーザーの履歴だけに絞り込めます。</li>
+            <li>「更新」で最新の履歴を再読み込みします。</li>
+            <li>閲覧権限がないユーザーには「作業履歴」ボタンが表示されません。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="settings">
+      <div class="section-head">
+        <div class="step-badge">11</div>
+        <div>
           <h2>設定ファイル setting.json</h2>
-          <p class="section-lead">管理者向けの補足です。列名や必要数ファイル、レポート取込のマッピングを設定できます。</p>
+          <p class="section-lead">管理者向けの補足です。列名、必要数ファイル、レポート取込、ユーザー権限を設定できます。</p>
         </div>
       </div>
 
@@ -1091,12 +1125,13 @@
             <li><code>column_mapping</code>: 顧客、機種、注文番号、個数、出荷時個数などのヘッダー名。</li>
             <li><code>required_quantity_file</code>: 必要数を管理する別 CSV の設定。</li>
             <li><code>report_import</code>: ロット番号・注文番号の列マッピング。<code>default</code> が全顧客共通、<code>customers</code> に顧客名をキーとして指定すると顧客別の設定が使われます。</li>
+            <li><code>users[].can_view_history</code>: <code>true</code> のユーザーだけが作業履歴を閲覧できます。未設定または <code>false</code> は閲覧不可です。</li>
             <li>CSV の列名が変わっても、設定側で追従できます。</li>
           </ul>
         </div>
         <div class="callout info">
           <strong>補足</strong>
-          画面の文言と CSV のヘッダーを一致させると、運用時に分かりやすくなります。列を追加する場合も、設定ファイルで対応可能です。
+          作業履歴を見せるユーザーの設定に <code>"can_view_history": true</code> を追加してください。権限変更後は、そのユーザーが再ログインすると表示へ反映されます。
         </div>
       </div>
     </section>

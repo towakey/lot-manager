@@ -214,6 +214,14 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
+    model_idx = -1
+    model_header = col_map.get("model", "")
+    if model_header:
+        try:
+            model_idx = csv_headers.index(model_header)
+        except ValueError:
+            pass
+
     customer_idx = -1
     if customer_header:
         try:
@@ -233,7 +241,7 @@ def main():
             pass
 
     # マッピング適用（出荷済みロットは除外）
-    updated_count = 0
+    history_entries = []
     for row in rows:
         if len(row) <= max(lot_idx, order_idx):
             continue
@@ -258,8 +266,25 @@ def main():
         if lot_num in import_map:
             new_order = import_map[lot_num]
             if row[order_idx] != new_order:
+                old_order = row[order_idx]
                 row[order_idx] = new_order
-                updated_count += 1
+                history_entries.append({
+                    "source": "レポート取込",
+                    "customer": (
+                        row[customer_idx]
+                        if customer_idx >= 0 and len(row) > customer_idx
+                        else ""
+                    ),
+                    "model": (
+                        row[model_idx]
+                        if model_idx >= 0 and len(row) > model_idx
+                        else ""
+                    ),
+                    "lot_number": lot_num,
+                    "field": order_header,
+                    "before": old_order,
+                    "after": new_order,
+                })
 
     # バックアップ
     if create_backup and os.path.exists(csv_path):
@@ -278,14 +303,17 @@ def main():
         send_json({"success": False, "error": "CSV書き込みエラー: " + str(e)})
         return
 
-    write_log(username, "レポート取込(全体)",
-              "顧客={} レポート件数={} 更新行数={}".format(
-                  customer or "(全て)", len(import_map), updated_count))
+    for entry in history_entries:
+        write_log(
+            username,
+            "ロット変更",
+            json.dumps(entry, ensure_ascii=False, separators=(",", ":")),
+        )
 
     send_json({
         "success":      True,
-        "message":      "データソース全体に反映しました ({} 行更新)".format(updated_count),
-        "updated_rows": updated_count,
+        "message":      "データソース全体に反映しました ({} 行更新)".format(len(history_entries)),
+        "updated_rows": len(history_entries),
     })
 
 if __name__ == "__main__":
