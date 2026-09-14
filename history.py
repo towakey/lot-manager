@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 history.py - 作業履歴取得CGI
-GET: ?username=admin&limit=500
+POST: { "username": "admin", "session_token": "...", "limit": 500 }
 """
 
 import csv
@@ -11,11 +11,6 @@ import os
 import sys
 
 from session_auth import validate_session
-
-if sys.version_info[0] >= 3:
-    from urllib.parse import parse_qs
-else:
-    from urlparse import parse_qs
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTING_PATH = os.path.join(SCRIPT_DIR, "setting.json")
@@ -27,7 +22,7 @@ def send_json(obj):
     body = json.dumps(obj, ensure_ascii=True)
     output = "Content-Type: application/json; charset=utf-8\r\n"
     output += "Access-Control-Allow-Origin: *\r\n"
-    output += "Access-Control-Allow-Headers: Content-Type, X-Session-Token\r\n"
+    output += "Access-Control-Allow-Headers: Content-Type\r\n"
     output += "Cache-Control: no-store\r\n"
     output += "Content-Length: {}\r\n".format(len(body))
     output += "\r\n"
@@ -41,8 +36,8 @@ def main():
     if method == "OPTIONS":
         send_json({"success": True})
         return
-    if method != "GET":
-        send_json({"success": False, "error": "GET のみ受け付けます"})
+    if method != "POST":
+        send_json({"success": False, "error": "POST のみ受け付けます"})
         return
 
     try:
@@ -52,14 +47,18 @@ def main():
         send_json({"success": False, "error": "setting.json 読み込み失敗: " + str(e)})
         return
 
-    parsed = parse_qs(
-        os.environ.get("QUERY_STRING", ""),
-        keep_blank_values=True,
-    )
-    username = parsed.get("username", [""])[0].strip()
-    session_token = os.environ.get("HTTP_X_SESSION_TOKEN", "")
     try:
-        limit = int(parsed.get("limit", ["500"])[0])
+        content_length = int(os.environ.get("CONTENT_LENGTH", 0))
+        raw = sys.stdin.buffer.read(content_length)
+        request_data = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        send_json({"success": False, "error": "リクエスト解析失敗: " + str(e)})
+        return
+
+    username = request_data.get("username", "").strip()
+    session_token = request_data.get("session_token", "")
+    try:
+        limit = int(request_data.get("limit", 500))
     except (TypeError, ValueError):
         limit = 500
     limit = max(1, min(limit, 1000))
