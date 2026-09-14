@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作業履歴 — ロット管理</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #d0d7e2;
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,.10);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 56px;
+      padding: 8px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .header h1 { margin: 0; font-size: 17px; white-space: nowrap; }
+    .spacer { flex: 1; }
+    .user { color: var(--text-muted); font-size: 13px; white-space: nowrap; }
+    select, button { font: inherit; }
+    select {
+      min-width: 160px;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--text);
+    }
+    .btn {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn:hover { background: var(--bg); color: var(--text); }
+    .page { max-width: 1400px; margin: 0 auto; padding: 24px 20px 40px; }
+    .panel {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-head h2 { margin: 0 0 5px; font-size: 20px; }
+    .panel-head p, .updated {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    td.change { min-width: 280px; white-space: normal; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .name { font-weight: 700; }
+    .target { color: var(--text-muted); }
+    .before { color: #991b1b; }
+    .after { color: #166534; font-weight: 700; }
+    .message {
+      display: none;
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .message.show { display: block; }
+    .message.error { color: var(--danger); }
+    .loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(255,255,255,.75);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .loading.show { display: flex; }
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 760px) {
+      .header { flex-wrap: wrap; }
+      .header .spacer { display: none; }
+      .header select { order: 3; width: 100%; }
+      .page { padding: 16px 10px 30px; }
+      .panel-head { align-items: flex-start; flex-direction: column; }
+      th, td { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>作業履歴</h1>
+    <select id="user-filter" onchange="renderHistory()">
+      <option value="">すべてのユーザー</option>
+    </select>
+    <div class="spacer"></div>
+    <span class="user" id="user-name"></span>
+    <button type="button" class="btn" onclick="loadHistory()">更新</button>
+    <button type="button" class="btn" onclick="window.close()">閉じる</button>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>ロット変更履歴</h2>
+          <p>画面保存と全データのレポート取込による変更を新しい順に表示します。</p>
+        </div>
+        <span class="updated" id="updated-at"></span>
+      </div>
+      <div class="table-wrap" id="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>ユーザー</th>
+              <th>操作</th>
+              <th>顧客</th>
+              <th>機種</th>
+              <th>LOT番号</th>
+              <th>変更内容</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+      <div class="message" id="message"></div>
+    </section>
+  </main>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>読み込み中...</span>
+  </div>
+
+  <script>
+    var HISTORY_URL = "history.py";
+    var currentUser = null;
+    var historyRows = [];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      try {
+        currentUser = JSON.parse(sessionStorage.getItem("lotManagerUser"));
+      } catch (e) {
+        currentUser = null;
+      }
+      if (
+        !currentUser ||
+        !currentUser.username ||
+        currentUser.can_view_history !== true
+      ) {
+        window.location.replace("index.html");
+        return;
+      }
+      document.getElementById("user-name").textContent =
+        currentUser.display_name || currentUser.username;
+      loadHistory();
+    });
+
+    function loadHistory() {
+      showLoading();
+      fetch(
+        HISTORY_URL + "?username=" + encodeURIComponent(currentUser.username)
+        + "&limit=1000",
+        {
+          headers: { "X-Session-Token": currentUser.session_token || "" }
+        }
+      )
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        hideLoading();
+        if (!data.success) {
+          throw new Error(data.error || "作業履歴を取得できませんでした");
+        }
+        historyRows = data.history || [];
+        updateUserFilter();
+        renderHistory();
+        document.getElementById("updated-at").textContent =
+          "更新: " + new Date().toLocaleString("ja-JP");
+      })
+      .catch(function(err) {
+        hideLoading();
+        showMessage(err.message, true);
+      });
+    }
+
+    function updateUserFilter() {
+      var select = document.getElementById("user-filter");
+      var selected = select.value;
+      var users = {};
+      historyRows.forEach(function(row) {
+        users[row.username] = row.display_name || row.username;
+      });
+      select.innerHTML = '<option value="">すべてのユーザー</option>';
+      Object.keys(users).sort().forEach(function(username) {
+        var option = document.createElement("option");
+        option.value = username;
+        option.textContent = users[username];
+        select.appendChild(option);
+      });
+      select.value = selected;
+    }
+
+    function renderHistory() {
+      var username = document.getElementById("user-filter").value;
+      var rows = historyRows.filter(function(row) {
+        return !username || row.username === username;
+      });
+      var body = document.getElementById("history-body");
+      body.innerHTML = "";
+
+      if (rows.length === 0) {
+        document.getElementById("table-wrap").style.display = "none";
+        showMessage("該当する作業履歴はありません", false);
+        return;
+      }
+
+      hideMessage();
+      document.getElementById("table-wrap").style.display = "";
+      rows.forEach(function(row) {
+        var tr = document.createElement("tr");
+        appendCell(tr, row.timestamp || "-", "");
+        appendCell(
+          tr,
+          row.display_name
+            ? row.display_name + " (" + row.username + ")"
+            : row.username,
+          "name"
+        );
+        appendCell(tr, row.source || row.action || "-", "");
+        appendCell(tr, row.customer || "-", "target");
+        appendCell(tr, row.model || "-", "target");
+        appendCell(tr, row.lot_number || "-", "target");
+
+        var changeCell = document.createElement("td");
+        changeCell.className = "change";
+        if (row.field) {
+          changeCell.appendChild(document.createTextNode(row.field + ": "));
+          var before = document.createElement("span");
+          before.className = "before";
+          before.textContent = displayValue(row.before);
+          changeCell.appendChild(before);
+          changeCell.appendChild(document.createTextNode(" → "));
+          var after = document.createElement("span");
+          after.className = "after";
+          after.textContent = displayValue(row.after);
+          changeCell.appendChild(after);
+        } else {
+          changeCell.textContent = row.detail || "-";
+        }
+        tr.appendChild(changeCell);
+        body.appendChild(tr);
+      });
+    }
+
+    function displayValue(value) {
+      return value === "" || value === null || typeof value === "undefined"
+        ? "(未設定)"
+        : value;
+    }
+
+    function appendCell(row, text, className) {
+      var cell = document.createElement("td");
+      cell.className = className;
+      cell.textContent = text;
+      row.appendChild(cell);
+    }
+
+    function showLoading() {
+      document.getElementById("loading").classList.add("show");
+    }
+
+    function hideLoading() {
+      document.getElementById("loading").classList.remove("show");
+    }
+
+    function showMessage(text, isError) {
+      var message = document.getElementById("message");
+      message.textContent = text;
+      message.className = "message show" + (isError ? " error" : "");
+    }
+
+    function hideMessage() {
+      document.getElementById("message").className = "message";
+      document.getElementById("message").textContent = "";
+    }
+  </script>
+</body>
+</html>

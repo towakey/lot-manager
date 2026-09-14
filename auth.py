@@ -11,6 +11,8 @@ import sys
 import csv
 from datetime import datetime
 
+from session_auth import create_session
+
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 SETTING_PATH = os.path.join(SCRIPT_DIR, "setting.json")
 LOG_PATH     = os.path.join(SCRIPT_DIR, "log.csv")
@@ -96,11 +98,14 @@ def main():
         return
 
     write_log(username, "ログイン")
+    session_token = create_session(username)
 
     send_json({
-        "success":      True,
-        "username":     username,
-        "display_name": matched_user.get("display_name", username),
+        "success":          True,
+        "username":         username,
+        "display_name":     matched_user.get("display_name", username),
+        "can_view_history": matched_user.get("can_view_history", False) is True,
+        "session_token":    session_token,
     })
 
 if __name__ == "__main__":

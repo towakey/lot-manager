@@ -131,6 +131,7 @@ def main():
     create_backup = data_file.get("create_backup", True)
 
     model_header         = col_map.get("model", "機種")
+    customer_header      = col_map.get("customer", "")
     order_header         = col_map.get("order_number", "注文番号")
     lot_header           = col_map.get("lot_number", "LOT番号")
     shipped_order_header = col_map.get("shipped_order_number", "")
@@ -158,6 +159,13 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
+    customer_idx = -1
+    if customer_header:
+        try:
+            customer_idx = headers.index(customer_header)
+        except ValueError:
+            pass
+
     shipped_order_idx = -1
     shipped_qty_idx = -1
     if shipped_order_header:
@@ -179,20 +187,45 @@ def main():
         if lot_num:
             change_map[lot_num] = {"new_order": new_order, "shipped": is_shipped}
 
-    updated_count = 0
+    history_entries = []
     max_idx = max(model_idx, order_idx, lot_idx)
     for row in rows:
         if len(row) > max_idx:
             if row[model_idx] == model and row[lot_idx] in change_map:
                 change_info = change_map[row[lot_idx]]
-                if change_info["shipped"] and shipped_order_idx >= 0:
-                    # 出荷済みロット: 出荷時注文番号を更新
-                    if len(row) > shipped_order_idx:
-                        row[shipped_order_idx] = change_info["new_order"]
+                if change_info["shipped"]:
+                    if shipped_order_idx < 0:
+                        continue
+                    if len(row) <= shipped_order_idx:
+                        continue
+                    target_idx = shipped_order_idx
+                    field_name = shipped_order_header
                 else:
-                    # 通常ロット: 注文番号を更新
-                    row[order_idx] = change_info["new_order"]
-                updated_count += 1
+                    target_idx = order_idx
+                    field_name = order_header
+
+                if len(row) <= target_idx:
+                    continue
+
+                old_order = row[target_idx]
+                new_order = change_info["new_order"]
+                if old_order == new_order:
+                    continue
+
+                row[target_idx] = new_order
+                history_entries.append({
+                    "source": "画面保存",
+                    "customer": (
+                        row[customer_idx]
+                        if customer_idx >= 0 and len(row) > customer_idx
+                        else ""
+                    ),
+                    "model": row[model_idx],
+                    "lot_number": row[lot_idx],
+                    "field": field_name,
+                    "before": old_order,
+                    "after": new_order,
+                })
 
     if create_backup and os.path.exists(csv_path):
         timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -209,13 +242,17 @@ def main():
         send_json({"success": False, "error": "CSV書き込みエラー: " + str(e)})
         return
 
-    write_log(username, "データ保存",
-              "機種={} 更新行数={}".format(model, updated_count))
+    for entry in history_entries:
+        write_log(
+            username,
+            "ロット変更",
+            json.dumps(entry, ensure_ascii=False, separators=(",", ":")),
+        )
 
     send_json({
         "success":      True,
-        "message":      "保存しました ({} 行更新)".format(updated_count),
-        "updated_rows": updated_count,
+        "message":      "保存しました ({} 行更新)".format(len(history_entries)),
+        "updated_rows": len(history_entries),
     })
 
 if __name__ == "__main__":

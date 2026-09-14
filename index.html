@@ -481,6 +481,7 @@
   <div class="user-badge">
     <strong id="header-display-name"></strong>
   </div>
+  <button class="btn btn-ghost" id="btn-history" onclick="openHistory()" style="display:none;padding:5px 12px;font-size:12px;">作業履歴</button>
   <button class="btn btn-ghost" onclick="openSummary()" style="padding:5px 12px;font-size:12px;">枚数一覧</button>
   <button class="btn btn-ghost" onclick="window.open('manual.html', '_blank')" style="padding:5px 12px;font-size:12px;">マニュアル</button>
   <button class="btn btn-ghost" onclick="doLogout()" style="padding:5px 12px;font-size:12px;">ログアウト</button>
@@ -592,6 +593,8 @@ function doLogin() {
     document.getElementById("input-password").value = "";
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("header-display-name").textContent = data.display_name;
+    document.getElementById("btn-history").style.display =
+      data.can_view_history === true ? "" : "none";
     document.getElementById("app-header").classList.add("show");
     document.getElementById("main").classList.add("show");
     document.getElementById("empty-state").classList.add("show");
@@ -634,6 +637,7 @@ function doLogout() {
   document.getElementById("btn-import").style.display = "none";
   document.getElementById("import-separator").style.display = "none";
   document.getElementById("import-mode").style.display = "none";
+  document.getElementById("btn-history").style.display = "none";
   hideStatus();
   updateChangeUI();
 }
@@ -642,6 +646,12 @@ function openSummary() {
   if (!currentUser) return;
   sessionStorage.setItem("lotManagerUser", JSON.stringify(currentUser));
   window.open("summary.html", "_blank");
+}
+
+function openHistory() {
+  if (!currentUser || currentUser.can_view_history !== true) return;
+  sessionStorage.setItem("lotManagerUser", JSON.stringify(currentUser));
+  window.open("history.html", "_blank");
 }
 
 /* =================================================================
