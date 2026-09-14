@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>機種別枚数一覧 — ロット管理</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #d0d7e2;
+      --primary: #2563eb;
+      --primary-h: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,.10);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 56px;
+      padding: 8px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 17px;
+      white-space: nowrap;
+    }
+    .filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    select, button {
+      font: inherit;
+    }
+    select {
+      min-width: 180px;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      background: #fff;
+    }
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+    .spacer { flex: 1; }
+    .user {
+      color: var(--text-muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .btn {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn:hover { background: var(--bg); color: var(--text); }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+    .panel {
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+    .panel-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-head h2 {
+      margin: 0 0 5px;
+      font-size: 20px;
+    }
+    .panel-head p, .updated {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    td.number, th.number {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .model { font-weight: 700; font-family: monospace; font-size: 15px; }
+    .quantity { font-size: 17px; font-weight: 700; }
+    .badge {
+      display: inline-block;
+      min-width: 84px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge.match { color: #166534; background: #dcfce7; }
+    .badge.shortage { color: #991b1b; background: #fee2e2; }
+    .badge.excess { color: #1d4ed8; background: #dbeafe; }
+    tfoot td {
+      background: #f8fafc;
+      border-top: 2px solid var(--border);
+      border-bottom: 0;
+      font-weight: 700;
+    }
+    .message {
+      display: none;
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .message.show { display: block; }
+    .message.error { color: var(--danger); }
+    .loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(255,255,255,.75);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .loading.show { display: flex; }
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 760px) {
+      .header { flex-wrap: wrap; }
+      .header .spacer { display: none; }
+      .filter { order: 3; width: 100%; }
+      .filter select { flex: 1; min-width: 0; }
+      .page { padding: 16px 10px 30px; }
+      .panel-head { align-items: flex-start; flex-direction: column; }
+      th, td { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>機種別枚数一覧</h1>
+    <div class="filter">
+      <label for="customer-select">顧客:</label>
+      <select id="customer-select" onchange="loadSummary()">
+        <option value="">すべての顧客</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <span class="user" id="user-name"></span>
+    <button type="button" class="btn" onclick="loadSummary()">更新</button>
+    <button type="button" class="btn" onclick="window.close()">閉じる</button>
+  </header>
+
+  <main class="page">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="scope-title">すべての顧客</h2>
+          <p>機種ごとの必要枚数と現状枚数を表示します。</p>
+        </div>
+        <span class="updated" id="updated-at"></span>
+      </div>
+      <div class="table-wrap" id="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>機種</th>
+              <th class="number">必要枚数</th>
+              <th class="number">現状枚数</th>
+              <th class="number">状況</th>
+            </tr>
+          </thead>
+          <tbody id="summary-body"></tbody>
+          <tfoot id="summary-foot"></tfoot>
+        </table>
+      </div>
+      <div class="message" id="message"></div>
+    </section>
+  </main>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>読み込み中...</span>
+  </div>
+
+  <script>
+    var LOAD_URL = "load_data.py";
+    var currentUser = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+      try {
+        currentUser = JSON.parse(sessionStorage.getItem("lotManagerUser"));
+      } catch (e) {
+        currentUser = null;
+      }
+      if (!currentUser || !currentUser.username) {
+        window.location.replace("index.html");
+        return;
+      }
+      document.getElementById("user-name").textContent =
+        currentUser.display_name || currentUser.username;
+      loadCustomers();
+    });
+
+    function loadCustomers() {
+      showLoading();
+      fetch(LOAD_URL + "?username=" + encodeURIComponent(currentUser.username))
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.success) throw new Error(data.error || "顧客一覧を取得できませんでした");
+        var select = document.getElementById("customer-select");
+        (data.customers || []).forEach(function(customer) {
+          var option = document.createElement("option");
+          option.value = customer;
+          option.textContent = customer;
+          select.appendChild(option);
+        });
+        loadSummary();
+      })
+      .catch(function(err) {
+        hideLoading();
+        showMessage(err.message, true);
+      });
+    }
+
+    function loadSummary() {
+      showLoading();
+      var customer = document.getElementById("customer-select").value;
+      var url = LOAD_URL + "?username=" + encodeURIComponent(currentUser.username)
+        + "&summary=1";
+      if (customer) {
+        url += "&customer=" + encodeURIComponent(customer);
+      }
+
+      fetch(url)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        hideLoading();
+        if (!data.success) throw new Error(data.error || "枚数一覧を取得できませんでした");
+        renderSummary(data.summary || [], customer);
+      })
+      .catch(function(err) {
+        hideLoading();
+        showMessage(err.message, true);
+      });
+    }
+
+    function renderSummary(rows, customer) {
+      var body = document.getElementById("summary-body");
+      var foot = document.getElementById("summary-foot");
+      body.innerHTML = "";
+      foot.innerHTML = "";
+      document.getElementById("scope-title").textContent = customer || "すべての顧客";
+      document.getElementById("updated-at").textContent =
+        "更新: " + new Date().toLocaleString("ja-JP");
+
+      if (rows.length === 0) {
+        document.getElementById("table-wrap").style.display = "none";
+        showMessage("該当する機種データがありません", false);
+        return;
+      }
+
+      hideMessage();
+      document.getElementById("table-wrap").style.display = "";
+      var requiredTotal = 0;
+      var currentTotal = 0;
+
+      rows.forEach(function(row) {
+        requiredTotal += row.required_quantity;
+        currentTotal += row.current_quantity;
+
+        var tr = document.createElement("tr");
+        appendCell(tr, row.model, "model");
+        appendCell(tr, formatNumber(row.required_quantity), "number quantity");
+        appendCell(tr, formatNumber(row.current_quantity), "number quantity");
+
+        var statusCell = document.createElement("td");
+        statusCell.className = "number";
+        var badge = document.createElement("span");
+        badge.className = "badge";
+        if (row.difference === 0) {
+          badge.classList.add("match");
+          badge.textContent = "一致";
+        } else if (row.difference < 0) {
+          badge.classList.add("shortage");
+          badge.textContent = "不足 " + formatNumber(Math.abs(row.difference));
+        } else {
+          badge.classList.add("excess");
+          badge.textContent = "超過 " + formatNumber(row.difference);
+        }
+        statusCell.appendChild(badge);
+        tr.appendChild(statusCell);
+        body.appendChild(tr);
+      });
+
+      var totalRow = document.createElement("tr");
+      appendCell(totalRow, "合計", "");
+      appendCell(totalRow, formatNumber(requiredTotal), "number");
+      appendCell(totalRow, formatNumber(currentTotal), "number");
+      appendCell(totalRow, "", "number");
+      foot.appendChild(totalRow);
+    }
+
+    function appendCell(row, text, className) {
+      var cell = document.createElement("td");
+      cell.className = className;
+      cell.textContent = text;
+      row.appendChild(cell);
+    }
+
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString("ja-JP");
+    }
+
+    function showLoading() {
+      document.getElementById("loading").classList.add("show");
+    }
+
+    function hideLoading() {
+      document.getElementById("loading").classList.remove("show");
+    }
+
+    function showMessage(text, isError) {
+      var message = document.getElementById("message");
+      message.textContent = text;
+      message.className = "message show" + (isError ? " error" : "");
+    }
+
+    function hideMessage() {
+      document.getElementById("message").className = "message";
+      document.getElementById("message").textContent = "";
+    }
+  </script>
+</body>
+</html>

@@ -481,6 +481,7 @@
   <div class="user-badge">
     <strong id="header-display-name"></strong>
   </div>
+  <button class="btn btn-ghost" onclick="openSummary()" style="padding:5px 12px;font-size:12px;">枚数一覧</button>
   <button class="btn btn-ghost" onclick="window.open('manual.html', '_blank')" style="padding:5px 12px;font-size:12px;">マニュアル</button>
   <button class="btn btn-ghost" onclick="doLogout()" style="padding:5px 12px;font-size:12px;">ログアウト</button>
 </header>
@@ -587,6 +588,7 @@ function doLogin() {
       return;
     }
     currentUser = data;
+    sessionStorage.setItem("lotManagerUser", JSON.stringify(data));
     document.getElementById("input-password").value = "";
     document.getElementById("login-screen").style.display = "none";
     document.getElementById("header-display-name").textContent = data.display_name;
@@ -611,6 +613,7 @@ function doLogout() {
     if (!confirm("未保存の変更があります。ログアウトしてもよいですか？")) return;
   }
   currentUser = null;
+  sessionStorage.removeItem("lotManagerUser");
   currentCustomer = "";
   currentModel = null;
   allLots = [];
@@ -633,6 +636,12 @@ function doLogout() {
   document.getElementById("import-mode").style.display = "none";
   hideStatus();
   updateChangeUI();
+}
+
+function openSummary() {
+  if (!currentUser) return;
+  sessionStorage.setItem("lotManagerUser", JSON.stringify(currentUser));
+  window.open("summary.html", "_blank");
 }
 
 /* =================================================================

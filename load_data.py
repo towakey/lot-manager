@@ -5,6 +5,9 @@ load_data.py - データ読み込みCGI
 GET: ?username=admin                         → 顧客一覧を返す
 GET: ?username=admin&customer=田中商事        → 該当顧客の機種一覧を返す
 GET: ?username=admin&models=1                → 全機種一覧を返す
+GET: ?username=admin&summary=1               → 全顧客の機種別枚数一覧を返す
+GET: ?username=admin&summary=1&customer=田中商事
+                                              → 該当顧客の機種別枚数一覧を返す
 GET: ?username=admin&model=AAA001            → 指定機種のデータをグループ化して返す
 """
 
@@ -54,6 +57,82 @@ def get_report_column_mapping(setting, customer):
         return default_cfg["column_mapping"]
     return cfg.get("column_mapping", {})
 
+def get_effective_values(row, order_idx, qty_idx, shipped_order_idx,
+                         shipped_qty_idx, input_qty_idx):
+    order = row[order_idx] if len(row) > order_idx else ""
+    qty = row[qty_idx] if len(row) > qty_idx else "0"
+    shipped_qty = ""
+    shipped_order = ""
+
+    if shipped_qty_idx >= 0 and len(row) > shipped_qty_idx:
+        shipped_qty = row[shipped_qty_idx].strip()
+    if shipped_order_idx >= 0 and len(row) > shipped_order_idx:
+        shipped_order = row[shipped_order_idx].strip()
+
+    is_shipped = False
+    try:
+        is_shipped = bool(shipped_qty and int(shipped_qty) > 0)
+    except (ValueError, TypeError):
+        pass
+
+    if is_shipped:
+        return (
+            shipped_order if shipped_order else order,
+            shipped_qty,
+            True,
+            shipped_qty,
+            shipped_order,
+        )
+
+    effective_qty = qty
+    if input_qty_idx >= 0 and len(row) > input_qty_idx:
+        input_qty = row[input_qty_idx].strip()
+        try:
+            if int(input_qty) > 0:
+                effective_qty = input_qty
+        except (ValueError, TypeError):
+            pass
+
+    return order, effective_qty, False, shipped_qty, shipped_order
+
+def load_required_quantities(setting):
+    required_map = {}
+    req_file_cfg = setting.get("required_quantity_file", {})
+    req_csv_path = req_file_cfg.get("csv_file_path", "")
+    req_col = req_file_cfg.get("column_mapping", {})
+    req_model_header = req_col.get("model", "")
+    req_order_header = req_col.get("order_number", "")
+    req_qty_header = req_col.get("required_quantity", "")
+
+    if not req_csv_path or not req_model_header or not req_order_header or not req_qty_header:
+        return required_map
+
+    if not os.path.isabs(req_csv_path):
+        req_csv_path = os.path.join(SCRIPT_DIR, req_csv_path)
+    if not os.path.exists(req_csv_path):
+        return required_map
+
+    req_enc = normalize_encoding(req_file_cfg.get("read_encoding", "utf-8"))
+    try:
+        with open(req_csv_path, mode="r", encoding=req_enc, newline="") as rf:
+            req_reader = csv.reader(rf)
+            req_headers = next(req_reader, [])
+            model_idx = req_headers.index(req_model_header)
+            order_idx = req_headers.index(req_order_header)
+            qty_idx = req_headers.index(req_qty_header)
+
+            for row in req_reader:
+                if len(row) <= max(model_idx, order_idx, qty_idx):
+                    continue
+                try:
+                    required_map[(row[model_idx], row[order_idx])] = int(row[qty_idx])
+                except (ValueError, TypeError):
+                    pass
+    except Exception:
+        pass
+
+    return required_map
+
 def write_log(username, action, detail=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     file_exists = os.path.exists(LOG_PATH)
@@ -84,6 +163,7 @@ def main():
     customer = parsed.get("customer", [""])[0]
     model    = parsed.get("model", [""])[0]
     get_models = parsed.get("models", [""])[0]
+    get_summary = parsed.get("summary", [""])[0]
 
     if not username:
         send_json({"success": False, "error": "username は必須です"})
@@ -175,8 +255,8 @@ def main():
         send_json({"success": False, "error": "ヘッダーマッピングエラー: " + str(e)})
         return
 
-    # 顧客一覧取得（model も get_models も指定なし）
-    if not model and not get_models:
+    # 顧客一覧取得（model も get_models も summary も指定なし）
+    if not model and not get_models and not get_summary:
         if customer_idx >= 0:
             customers = sorted(set(
                 row[customer_idx] for row in rows
@@ -204,6 +284,87 @@ def main():
         send_json({"success": True, "models": models, "customer": customer})
         return
 
+    required_map = load_required_quantities(setting)
+
+    # 機種別枚数一覧取得
+    if get_summary:
+        if customer and customer_idx < 0:
+            send_json({"success": False, "error": "顧客列が設定されていません"})
+            return
+
+        target_rows = rows
+        if customer:
+            target_rows = [
+                row for row in rows
+                if len(row) > customer_idx and row[customer_idx] == customer
+            ]
+
+        summary_map = {}
+        model_orders = {}
+        for row in target_rows:
+            if len(row) <= model_idx or not row[model_idx].strip():
+                continue
+
+            row_model = row[model_idx]
+            effective_order, effective_qty, _, _, _ = get_effective_values(
+                row, order_idx, qty_idx, shipped_order_idx,
+                shipped_qty_idx, input_qty_idx
+            )
+            if row_model not in summary_map:
+                summary_map[row_model] = 0
+                model_orders[row_model] = set()
+            try:
+                summary_map[row_model] += int(effective_qty)
+            except (ValueError, TypeError):
+                pass
+            if effective_order:
+                model_orders[row_model].add(effective_order)
+
+        if not customer:
+            for req_model, _ in required_map.keys():
+                if req_model not in summary_map:
+                    summary_map[req_model] = 0
+                    model_orders[req_model] = set()
+
+        summary_rows = []
+        for row_model in sorted(summary_map.keys()):
+            if customer:
+                required = sum(
+                    required_map.get((row_model, order), 0)
+                    for order in model_orders.get(row_model, set())
+                )
+            else:
+                required = sum(
+                    qty for (req_model, _), qty in required_map.items()
+                    if req_model == row_model
+                )
+            current = summary_map[row_model]
+            summary_rows.append({
+                "model": row_model,
+                "required_quantity": required,
+                "current_quantity": current,
+                "difference": current - required,
+            })
+
+        write_log(username, "機種別枚数一覧取得",
+                  "顧客={} 件数: {}".format(customer or "(全て)", len(summary_rows)))
+        send_json({
+            "success": True,
+            "customer": customer,
+            "summary": summary_rows,
+            "column_labels": {
+                "customer": customer_header or "顧客",
+                "model": model_header or "機種",
+                "required_quantity": (
+                    setting.get("required_quantity_file", {})
+                    .get("column_mapping", {})
+                    .get("required_quantity", "必要枚数")
+                ),
+                "current_quantity": "現状枚数",
+            },
+        })
+        return
+
     filtered = [row for row in rows if len(row) > model_idx and row[model_idx] == model]
 
     groups = {}
@@ -213,36 +374,12 @@ def main():
         qty     = row[qty_idx]     if len(row) > qty_idx     else "0"
         process = row[process_idx] if len(row) > process_idx else ""
 
-        # 出荷時個数・注文番号の判定
-        shipped_qty_val = ""
-        shipped_order_val = ""
-        is_shipped = False
-        if shipped_qty_idx >= 0 and len(row) > shipped_qty_idx:
-            shipped_qty_val = row[shipped_qty_idx].strip()
-        if shipped_order_idx >= 0 and len(row) > shipped_order_idx:
-            shipped_order_val = row[shipped_order_idx].strip()
-
-        # 出荷時個数が0より大きい場合は出荷済み
-        try:
-            if shipped_qty_val and int(shipped_qty_val) > 0:
-                is_shipped = True
-        except (ValueError, TypeError):
-            pass
-
-        # 出荷済みの場合: 注文番号は出荷時注文番号、個数は出荷時個数を使用
-        if is_shipped:
-            effective_order = shipped_order_val if shipped_order_val else order
-            effective_qty = shipped_qty_val
-        else:
-            effective_order = order
-            effective_qty = qty
-            if input_qty_idx >= 0 and len(row) > input_qty_idx:
-                input_qty_val = row[input_qty_idx].strip()
-                try:
-                    if int(input_qty_val) > 0:
-                        effective_qty = input_qty_val
-                except (ValueError, TypeError):
-                    pass
+        effective_order, effective_qty, is_shipped, shipped_qty_val, shipped_order_val = (
+            get_effective_values(
+                row, order_idx, qty_idx, shipped_order_idx,
+                shipped_qty_idx, input_qty_idx
+            )
+        )
 
         if effective_order not in groups:
             groups[effective_order] = []
@@ -259,42 +396,7 @@ def main():
             "shipped_order":    shipped_order_val,
         })
 
-    # 必要数管理ファイルの読み込み
-    required_map = {}
     req_file_cfg = setting.get("required_quantity_file", {})
-    req_csv_path = req_file_cfg.get("csv_file_path", "")
-    if req_csv_path:
-        if not os.path.isabs(req_csv_path):
-            req_csv_path = os.path.join(SCRIPT_DIR, req_csv_path)
-        req_enc = normalize_encoding(req_file_cfg.get("read_encoding", "utf-8"))
-        req_col = req_file_cfg.get("column_mapping", {})
-        req_model_header = req_col.get("model", "")
-        req_order_header = req_col.get("order_number", "")
-        req_qty_header   = req_col.get("required_quantity", "")
-
-        if os.path.exists(req_csv_path) and req_model_header and req_order_header and req_qty_header:
-            try:
-                with open(req_csv_path, mode="r", encoding=req_enc, newline="") as rf:
-                    req_reader = csv.reader(rf)
-                    req_headers = []
-                    for ri, rrow in enumerate(req_reader):
-                        if ri == 0:
-                            req_headers = rrow
-                        else:
-                            try:
-                                rm_idx = req_headers.index(req_model_header)
-                                ro_idx = req_headers.index(req_order_header)
-                                rq_idx = req_headers.index(req_qty_header)
-                            except ValueError:
-                                break
-                            if len(rrow) > max(rm_idx, ro_idx, rq_idx):
-                                if rrow[rm_idx] == model:
-                                    try:
-                                        required_map[rrow[ro_idx]] = int(rrow[rq_idx])
-                                    except (ValueError, TypeError):
-                                        pass
-            except Exception:
-                pass
 
     result_groups = []
     for order_num in sorted(groups.keys(), key=lambda x: (x == "", x)):
@@ -310,8 +412,8 @@ def main():
             "total_quantity":   total,
             "lots":             lots,
         }
-        if order_num in required_map:
-            group_data["required_quantity"] = required_map[order_num]
+        if (model, order_num) in required_map:
+            group_data["required_quantity"] = required_map[(model, order_num)]
         result_groups.append(group_data)
 
     write_log(username, "データ読み込み",
