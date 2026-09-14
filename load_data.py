@@ -301,6 +301,7 @@ def main():
 
         summary_map = {}
         model_orders = {}
+        model_customers = {}
         for row in target_rows:
             if len(row) <= model_idx or not row[model_idx].strip():
                 continue
@@ -313,18 +314,26 @@ def main():
             if row_model not in summary_map:
                 summary_map[row_model] = 0
                 model_orders[row_model] = set()
+                model_customers[row_model] = set()
             try:
                 summary_map[row_model] += int(effective_qty)
             except (ValueError, TypeError):
                 pass
             if effective_order:
                 model_orders[row_model].add(effective_order)
+            if (
+                customer_idx >= 0
+                and len(row) > customer_idx
+                and row[customer_idx].strip()
+            ):
+                model_customers[row_model].add(row[customer_idx])
 
         if not customer:
             for req_model, _ in required_map.keys():
                 if req_model not in summary_map:
                     summary_map[req_model] = 0
                     model_orders[req_model] = set()
+                    model_customers[req_model] = set()
 
         summary_rows = []
         for row_model in sorted(summary_map.keys()):
@@ -340,6 +349,7 @@ def main():
                 )
             current = summary_map[row_model]
             summary_rows.append({
+                "customers": sorted(model_customers.get(row_model, set())),
                 "model": row_model,
                 "required_quantity": required,
                 "current_quantity": current,
