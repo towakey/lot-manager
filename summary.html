@@ -135,7 +135,12 @@
       font-variant-numeric: tabular-nums;
     }
     tbody tr:hover { background: #f8fafc; }
+    tbody tr.shortage-row { background: #fff1f2; }
+    tbody tr.shortage-row:hover { background: #ffe4e6; }
+    tbody tr.excess-row { background: #eff6ff; }
+    tbody tr.excess-row:hover { background: #dbeafe; }
     tbody tr:last-child td { border-bottom: 0; }
+    .customer { font-weight: 600; }
     .model { font-weight: 700; font-family: monospace; font-size: 15px; }
     .quantity { font-size: 17px; font-weight: 700; }
     .badge {
@@ -225,6 +230,7 @@
         <table>
           <thead>
             <tr>
+              <th>顧客</th>
               <th>機種</th>
               <th class="number">必要枚数</th>
               <th class="number">現状枚数</th>
@@ -331,6 +337,7 @@
         currentTotal += row.current_quantity;
 
         var tr = document.createElement("tr");
+        appendCell(tr, (row.customers || []).join("、") || "-", "customer");
         appendCell(tr, row.model, "model");
         appendCell(tr, formatNumber(row.required_quantity), "number quantity");
         appendCell(tr, formatNumber(row.current_quantity), "number quantity");
@@ -343,9 +350,11 @@
           badge.classList.add("match");
           badge.textContent = "一致";
         } else if (row.difference < 0) {
+          tr.classList.add("shortage-row");
           badge.classList.add("shortage");
           badge.textContent = "不足 " + formatNumber(Math.abs(row.difference));
         } else {
+          tr.classList.add("excess-row");
           badge.classList.add("excess");
           badge.textContent = "超過 " + formatNumber(row.difference);
         }
@@ -355,6 +364,7 @@
       });
 
       var totalRow = document.createElement("tr");
+      appendCell(totalRow, "", "");
       appendCell(totalRow, "合計", "");
       appendCell(totalRow, formatNumber(requiredTotal), "number");
       appendCell(totalRow, formatNumber(currentTotal), "number");
